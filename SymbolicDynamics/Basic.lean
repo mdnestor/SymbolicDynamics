@@ -187,16 +187,12 @@ def cover {X I : Type} [TopologicalSpace X] (U: I → Set X) (S: Set X): Prop :=
 theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] (τ: (G → A) → G → A) (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
   -- will need eventually: G → A is compact
 
-  --have h3: CompactSpace (G → A) := Function.compactSpace
-  --have univ_compact: IsCompact (Set.univ (α := G → A)) := CompactSpace.isCompact_univ
-  let φ: (G → A) → A := (fun x: G → A => x 1) ∘ τ
+  let φ := (fun x: G → A => x 1) ∘ τ
 
   have hφ : Continuous φ := by
     apply Continuous.comp
     exact proj_continuous 1
     exact h1
-
-  -- HARD PART
 
   -- since φ is continuous, we can find for each x a finite subset Ωx such that if y ∈ V(x, Ωx) then τ x 1 = τ y 1... why?
   have h3 : ∀ x: G → A, ∃ Ωx: Set G, Finite Ωx ∧ ∀ y: G → A, y ∈ V x Ωx → τ x 1 = τ y 1 := sorry
@@ -205,44 +201,40 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
     fun x => Classical.choose (h3 x)
 
   -- all Ω x are finite
-  have Ω_finite : ∀ x, Finite (Ω x) := by
+  have h4 : ∀ x, Finite (Ω x) := by
     sorry
 
   -- the V x (Ω x) cover the whole space
-  have h_cover_univ : Set.univ ⊆ ⋃ x, V x (Ω x) := by
+  have h5 : Set.univ ⊆ ⋃ x, V x (Ω x) := by
     intro x _
     simp
     exists x
     apply x_in_V x
 
   -- extract a finite subcover
-  obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => V x (Ω x)) (fun x => V_is_open x (Ω x)) h_cover_univ
+  obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => V x (Ω x)) (fun x => V_is_open x (Ω x)) h5
 
   let S := Set.sUnion (Set.image Ω F)
+  exists S
 
-  have h5 : Finite S := by
+  have h6 : Finite S := by
     apply Set.Finite.sUnion
     exact Set.Finite.image Ω (by simp)
     intro _ hΩx
     simp [Set.image] at hΩx
     obtain ⟨x, hx⟩ := hΩx
     rw [←hx.2]
-    exact Ω_finite x
+    exact h4 x
 
-  exists S
-
-  have h6: memory_set τ S := by
-    apply And.intro
-    exact h5
-    let μ : (S → A) → A := sorry
-    exists μ
-    apply (cellular_automata_iff h5 μ).mpr
-    apply And.intro
-    exact h2
-    intro x
-    sorry
-
+  apply And.intro
   exact h6
+  let μ : (S → A) → A := sorry
+  exists μ
+  apply (cellular_automata_iff h6 μ).mpr
+  apply And.intro
+  exact h2
+  intro x
+  sorry
 
 -- theorem 1.8.1
 theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] (τ: (G → A) → G → A): sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
