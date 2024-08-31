@@ -9,8 +9,7 @@ References
 -- "Some notes on the classification of shift spaces: Shifts of Finite Type; Sofic Shifts; and Finitely Defined Shifts" by Sobottka (2020) https://arxiv.org/abs/2010.10595
 -- "Symbolic dynamics" on Scholarpedia http://www.scholarpedia.org/article/Symbolic_dynamics
 
-TODO: correct shift space
-
+TODO: correct shift space, use Finsets
 -/
 
 import Mathlib.Data.Set.Basic
@@ -33,6 +32,9 @@ def local_map {G A B: Type} [Mul G] {S: Set G} (τ: (G → A) → G → B) (μ: 
 def memory_set {G A B: Type} [Mul G] (τ: (G → A) → G → B) (S: Set G): Prop :=
   Finite S ∧ ∃ μ: (S → A) → B, local_map τ μ
 
+def memory_finset {G A B: Type} [Mul G] (τ: (G → A) → G → B) (S: Finset G): Prop :=
+  ∃ μ: (S → A) → B, local_map τ μ
+
 def shift_space {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (S: Set (M → A)): Prop :=
   IsClosed S ∧ ∀ x ∈ S, ∀ g: M, x ∘ leftMul g ∈ S
 
@@ -41,6 +43,9 @@ def window {A M: Type} (Λ: Set (M → A)) (N: Set M): Set (N → A) :=
 
 def sliding_block_code {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :=
   ∃ S: Set M, memory_set Φ S
+
+def sliding_block_code_fin {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :=
+  ∃ S: Finset M, memory_finset Φ S
 
 def sliding_block_code_correct {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: shift_space Λ) (Φ: Λ → M → B): Prop :=
   sorry
@@ -106,7 +111,7 @@ theorem cylinder_clopen {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
 def V {G A: Type} (x: G → A) (Ω: Set G): Set (G → A) :=
   {y: G → A | Set.EqOn x y Ω}
 
-theorem x_in_V {G A: Type} (x: G → A) (Ω: Set G): x ∈ V x Ω := by
+theorem x_in_V {G A: Type} (x: G → A): ∀ Ω: Set G, x ∈ V x Ω := by
   simp [V, Set.EqOn]
 
 theorem open_contains_is_neighborhood {X: Type} [TopologicalSpace X] {U: Set X} {x: X} (h: IsOpen U) (h2: x ∈ U): U ∈ nhds x := sorry
@@ -172,15 +177,18 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
   exact le_trans h1 hΩ.2
 
 -- definition of a cover
-def covers {X I : Type} [TopologicalSpace X] (U: I → Set X) (S: Set X): Prop :=
-  ∀ i: I, IsOpen (U i) → S ⊆ ⋃ (i: I), U i
+-- a map U: I → Set X is a cover of a set S ⊆ X if
+-- - for each i: I, U i is open
+-- - S ⊆ ⋃ (i: I), U i
+def cover {X I : Type} [TopologicalSpace X] (U: I → Set X) (S: Set X): Prop :=
+  ∀ i: I, IsOpen (U i) ∧ S ⊆ ⋃ (i: I), U i
 
 -- curtis hedlund theorem reverse direction
 theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] (τ: (G → A) → G → A) (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
   -- will need eventually: G → A is compact
 
-  have h3: CompactSpace (G → A) := Function.compactSpace
-
+  --have h3: CompactSpace (G → A) := Function.compactSpace
+  --have univ_compact: IsCompact (Set.univ (α := G → A)) := CompactSpace.isCompact_univ
   let φ: (G → A) → A := (fun x: G → A => x 1) ∘ τ
 
   have hφ : Continuous φ := by
@@ -191,25 +199,30 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
   -- HARD PART
 
   -- since φ is continuous, we can find for each x a finite subset Ωx such that if y ∈ V(x, Ωx) then τ x 1 = τ y 1... why?
-  have h3: ∀ x: G → A, ∃ Ωx: Set G, Finite Ωx ∧ ∀ y: G → A, y ∈ V x Ωx → τ x 1 = τ y 1 := sorry
+  have h3 : ∀ x: G → A, ∃ Ωx: Set G, Finite Ωx ∧ ∀ y: G → A, y ∈ V x Ωx → τ x 1 = τ y 1 := sorry
 
-  have Ω: (G → A) → Set G :=
+  have Ω : (G → A) → Set G :=
     fun x => Classical.choose (h3 x)
 
   -- all Ω x are finite
-  have Ω_finite: ∀ x, Finite (Ω x) := by
+  have Ω_finite : ∀ x, Finite (Ω x) := by
     sorry
 
-  -- these sets form a cover. since A → G is compact there is a finite subcover
-  have h4: ∃ F: Set (G → A), Finite F := sorry -- ∧ covers (fun x: F => V x (Ω x)) Set.univ := sorry
-  have F: Set (G → A) := Classical.choose h4
-  have F_finite: Finite F := sorry
+  -- the V x (Ω x) cover the whole space
+  have h_cover_univ : Set.univ ⊆ ⋃ x, V x (Ω x) := by
+    intro x _
+    simp
+    exists x
+    apply x_in_V x
+
+  -- extract a finite subcover
+  obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => V x (Ω x)) (fun x => V_is_open x (Ω x)) h_cover_univ
 
   let S := Set.sUnion (Set.image Ω F)
 
-  have h5: Finite S := by
+  have h5 : Finite S := by
     apply Set.Finite.sUnion
-    exact Set.Finite.image Ω F_finite
+    exact Set.Finite.image Ω (by simp)
     intro _ hΩx
     simp [Set.image] at hΩx
     obtain ⟨x, hx⟩ := hΩx
