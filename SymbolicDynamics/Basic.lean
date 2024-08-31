@@ -178,6 +178,7 @@ def covers {X I : Type} [TopologicalSpace X] (U: I → Set X) (S: Set X): Prop :
 -- curtis hedlund theorem reverse direction
 theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] (τ: (G → A) → G → A) (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
   -- will need eventually: G → A is compact
+
   have h3: CompactSpace (G → A) := Function.compactSpace
 
   let φ: (G → A) → A := (fun x: G → A => x 1) ∘ τ
@@ -195,15 +196,40 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
   have Ω: (G → A) → Set G :=
     fun x => Classical.choose (h3 x)
 
+  -- all Ω x are finite
+  have Ω_finite: ∀ x, Finite (Ω x) := by
+    sorry
 
   -- these sets form a cover. since A → G is compact there is a finite subcover
   have h4: ∃ F: Set (G → A), Finite F := sorry -- ∧ covers (fun x: F => V x (Ω x)) Set.univ := sorry
   have F: Set (G → A) := Classical.choose h4
+  have F_finite: Finite F := sorry
 
   let S := Set.sUnion (Set.image Ω F)
+
+  have h5: Finite S := by
+    apply Set.Finite.sUnion
+    exact Set.Finite.image Ω F_finite
+    intro _ hΩx
+    simp [Set.image] at hΩx
+    obtain ⟨x, hx⟩ := hΩx
+    rw [←hx.2]
+    exact Ω_finite x
+
   exists S
-  have h5: memory_set τ S := sorry
-  exact h5
+
+  have h6: memory_set τ S := by
+    apply And.intro
+    exact h5
+    let μ : (S → A) → A := sorry
+    exists μ
+    apply (cellular_automata_iff h5 μ).mpr
+    apply And.intro
+    exact h2
+    intro x
+    sorry
+
+  exact h6
 
 -- theorem 1.8.1
 theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] (τ: (G → A) → G → A): sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
