@@ -150,14 +150,22 @@ def V {G A: Type} (x: G → A) (Ω: Set G): Set (G → A) :=
 
 theorem V_cylinder_eq {G A: Type} (x: G → A) (Ω: Set G):
   V x Ω = Set.sInter (Set.image (fun g => cylinder g (x g)) Ω) := by
-  sorry
+  simp [cylinder, V, Set.EqOn]
+  ext
+  rw [Set.mem_setOf_eq, Set.mem_iInter]
+  apply Iff.intro
+  · intros
+    simp_all
+  · intros
+    simp_all
 
 theorem x_in_V {G A: Type} (x: G → A): ∀ Ω: Set G, x ∈ V x Ω := by
   simp [V, Set.EqOn]
 
 theorem open_contains_is_neighborhood {X: Type} [TopologicalSpace X] {U: Set X} {x: X} (h: IsOpen U) (h2: x ∈ U): U ∈ nhds x := sorry
 
-theorem V_is_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A) (Ω: Set G): IsOpen (V x Ω) := sorry
+theorem V_is_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A) (Ω: Set G): IsOpen (V x Ω) := by
+  sorry
 
 theorem V_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A) (Ω: Set G):
   V x Ω ∈ nhds x := by
@@ -165,7 +173,7 @@ theorem V_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G →
 
 -- "Let x: G → A and let W be a neighborhood of τ(x). Then we can find a finite subset Ω ⊆ G such that V(τ(x), Ω) ⊆ W" why..?
 theorem lemma1 {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A] {W: Set (G → A)} {x: G → A} (h2: W ∈ nhds x):
-  ∃ Ω: Set G, Finite Ω ∧ V x Ω ⊆ W :=
+  ∃ Ω: Set G, Finite Ω ∧ V x Ω ⊆ W := by
     sorry
 
 def setMul [Monoid G] (A B: Set G) : Set G :=
