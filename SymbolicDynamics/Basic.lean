@@ -186,18 +186,30 @@ theorem V_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G →
   exact open_contains_is_neighborhood (V_is_open x Ω) (x_in_V x Ω)
 
 -- "Let x: G → A and let W be a neighborhood of τ(x). Then we can find a finite subset Ω ⊆ G such that V(τ(x), Ω) ⊆ W" why..?
-theorem lemma1 {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A] {W: Set (G → A)} {x: G → A} (h2: W ∈ nhds x):
+theorem lemma1 {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
+  {W: Set (G → A)} {x: G → A} (h2: W ∈ nhds x):
   ∃ Ω: Set G, Finite Ω ∧ V x Ω ⊆ W := by
     sorry
 
 def setMul [Monoid G] (A B: Set G) : Set G :=
   (Set.image2 fun x y => x * y) A B
 
-theorem memory_set_eq {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A} {S: Set G} (h1: sliding_block_code τ) (h2: memory_set τ S): ∀ x y: G → A, ∀ Ω: Set G, Set.EqOn x y (setMul Ω S) → Set.EqOn (τ x) (τ y) Ω := by
-  intro x y Ω h
-  let ⟨μ, hμ⟩ := h2
+theorem memory_set_eq {G A: Type} [Monoid G]
+  {τ: (G → A) → G → A}
+  {S: Set G} (h1: memory_set τ S)
+  {x y: G → A} {Ω: Set G} (h2: Set.EqOn x y (setMul Ω S)):
+    Set.EqOn (τ x) (τ y) Ω := by
+  obtain ⟨_, μ, hμ⟩ := h1
   intro g hg
-  sorry
+  rw [hμ x g, hμ y g]
+  apply congrArg
+  simp [Set.EqOn]
+  intro g' _
+  apply h2
+  exists g
+  constructor
+  assumption
+  exists g'
 
 -- proposition 1.4.6
 theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
@@ -222,7 +234,9 @@ theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [Discre
         _ = μ (S.restrict (x ∘ leftMul g)) := by sorry
 
 -- proposition 1.4.8
-theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
+-- this still depends on lemma1 and memory_set_eq
+theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
+  {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
   apply continuous_of_neighborhood_continuous
   intro x W hW
   obtain ⟨Ω, hΩ⟩ := lemma1 hW
@@ -236,7 +250,7 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
     simp [V] at hτy
     obtain ⟨y, hy⟩ := hτy
     simp [V, ←hy.2]
-    exact memory_set_eq h hS x y Ω hy.1
+    exact memory_set_eq hS hy.1
   exact le_trans h1 hΩ.2
 
 -- definition of a cover
