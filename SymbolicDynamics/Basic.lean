@@ -23,6 +23,8 @@ import Mathlib.Topology.Constructions
 import Mathlib.Topology.Compactness.Compact
 import Mathlib.Topology.UniformSpace.Basic
 import Mathlib.Topology.UniformSpace.Pi
+import Mathlib.Topology.Separation
+import Mathlib.Topology.Connected.TotallyDisconnected
 
 -- definition 1.4.1
 
@@ -60,14 +62,6 @@ lemma left_mul_comp {G: Type} [Group G] {g g': G}: leftMul g⁻¹ ∘ leftMul g'
 
 def equivariant {G A B: Type} [Group G] (τ: (G → A) → G → B): Prop := ∀ x: G → A, ∀ g: G, τ (x ∘ (leftMul g⁻¹)) = (τ x) ∘ (leftMul g⁻¹)
 
-theorem shit_continuous {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]:
-  ∀ g: M, Continuous (fun x: M → A => x ∘ leftMul g) := by
-    sorry
-
-theorem shift_uniform_continuous {A M: Type} [Mul M] [UniformSpace A] (h: uniformity A = Filter.principal idRel):
-  ∀ g: M, UniformContinuous (fun x: M → A => x ∘ leftMul g) := by
-    sorry
-
 -- proposition 1.4.4
 theorem sliding_block_equivariant {G A: Type} [Group G] {τ: (G → A) → G → B} (h: sliding_block_code τ): equivariant τ := by
   intro x g
@@ -81,17 +75,26 @@ theorem sliding_block_equivariant {G A: Type} [Group G] {τ: (G → A) → G →
     τ (x ∘ (leftMul g⁻¹)) h = μ (Set.restrict S (x ∘ (leftMul (g⁻¹ * h)))) := by rw [h1]
                           _ = (τ x) (g⁻¹ * h) := by rw [h0 x (g⁻¹ * h)]
 
--- neighborhood definition of continuity
--- TODO find in mathlib
-lemma continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y} (h: ∀ x: X, ∀ V ∈ nhds (f x), ∃ U ∈ nhds x, Set.image f U ⊆ V): Continuous f := by
-  sorry
+
+
+-- results about the prodiscrete topology
+
+-- it is both T2 (Hausdorff) and totally disconnected
+
+theorem prodiscrete_T2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+  T2Space (G → A) := by
+  apply Pi.t2Space
+
+theorem prodiscrete_totally_disconnected {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+  TotallyDisconnectedSpace (G → A) := by
+  apply Pi.totallyDisconnectedSpace
 
 -- projection map
 def proj {G A: Type} (g: G): (G → A) → A :=
   fun x: G → A => x g
 
 -- every projection map is continuous in prodiscrete topology. this seems to hold even without DiscreteTopology which is sus
-theorem proj_continuous {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+theorem proj_continuous {G A: Type} [TopologicalSpace A]:
   ∀ g: G, Continuous (proj g: (G → A) → A) := by
   intro g
   exact continuous_apply g
@@ -101,15 +104,53 @@ theorem proj_continuous2 {G A: Type} [TopologicalSpace A]:
   intro g
   exact continuous_apply g
 
+-- the shift map is continuous
+theorem shit_continuous {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]:
+  ∀ g: M, Continuous (fun x: M → A => x ∘ leftMul g) := by
+    sorry
+
+theorem shift_uniform_continuous {A M: Type} [Mul M] [UniformSpace A] (h: uniformity A = Filter.principal idRel):
+  ∀ g: M, UniformContinuous (fun x: M → A => x ∘ leftMul g) := by
+    sorry
+
 def cylinder {G A: Type} (g: G) (a: A): Set (G → A) :=
   {x: G → A | x g = a}
 
-theorem cylinder_clopen {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  ∀ g: G, ∀ a: A, IsClopen (cylinder g a) := by
+theorem cylinder_preimage {G A: Type} (g: G) (a: A):
+  cylinder g a = Set.preimage (proj g) (Set.singleton a) := by
+  rfl
+
+theorem cylinder_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A):
+  IsOpen (cylinder g a) := by
+  rw [cylinder_preimage]
+  apply Continuous.isOpen_preimage
+  exact proj_continuous g
+  simp
+
+theorem cylinder_closed {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A):
+  IsClosed (cylinder g a) := by
   sorry
 
+theorem cylinder_clopen {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A): IsClopen (cylinder g a) :=
+  ⟨cylinder_closed g a, cylinder_open g a⟩
+
+-- a set is open iff. it is a union of finite intersections of cylinders
+theorem open_iff_union_of_finite_intersection_of_cylinders
+  {A G: Type} [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}:
+  True := sorry -- IsOpen U ↔ ∃ I: Type, ∀ i: I, ∃ J: Type, Finite J ∧ U = Set.sUnion
+
+-- neighborhood definition of continuity
+-- TODO find in mathlib
+lemma continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y} (h: ∀ x: X, ∀ V ∈ nhds (f x), ∃ U ∈ nhds x, Set.image f U ⊆ V): Continuous f := by
+  sorry
+
+-- V set (eq 1.3)
 def V {G A: Type} (x: G → A) (Ω: Set G): Set (G → A) :=
   {y: G → A | Set.EqOn x y Ω}
+
+theorem V_cylinder_eq {G A: Type} (x: G → A) (Ω: Set G):
+  V x Ω = Set.sInter (Set.image (fun g => cylinder g (x g)) Ω) := by
+  sorry
 
 theorem x_in_V {G A: Type} (x: G → A): ∀ Ω: Set G, x ∈ V x Ω := by
   simp [V, Set.EqOn]
