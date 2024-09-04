@@ -62,7 +62,6 @@ lemma left_mul_comp {G: Type} [Group G] {g g': G}: leftMul g⁻¹ ∘ leftMul g'
 
 def equivariant {G A B: Type} [Group G] (τ: (G → A) → G → B): Prop := ∀ x: G → A, ∀ g: G, τ (x ∘ (leftMul g⁻¹)) = (τ x) ∘ (leftMul g⁻¹)
 
--- proposition 1.4.4
 theorem sliding_block_equivariant {G A: Type} [Group G] {τ: (G → A) → G → B} (h: sliding_block_code τ): equivariant τ := by
   intro x g
   obtain ⟨S, _, μ, h0⟩ := h
@@ -75,6 +74,28 @@ theorem sliding_block_equivariant {G A: Type} [Group G] {τ: (G → A) → G →
     τ (x ∘ (leftMul g⁻¹)) h = μ (Set.restrict S (x ∘ (leftMul (g⁻¹ * h)))) := by rw [h1]
                           _ = (τ x) (g⁻¹ * h) := by rw [h0 x (g⁻¹ * h)]
 
+def setMul [Mul G] (A B: Set G) : Set G :=
+  (Set.image2 fun x y => x * y) A B
+
+-- if τ is a sliding block code with memory set S
+-- if x and y are equal on Ω * S (pointwise multiplication)
+-- then τ(x) and τ(y) are equal on Ω
+theorem memory_set_eq {G A: Type} [Mul G]
+  {τ: (G → A) → G → A}
+  {S: Set G} (h1: memory_set τ S)
+  {x y: G → A} {Ω: Set G} (h2: Set.EqOn x y (setMul Ω S)):
+    Set.EqOn (τ x) (τ y) Ω := by
+  obtain ⟨_, μ, hμ⟩ := h1
+  intro g hg
+  rw [hμ x g, hμ y g]
+  apply congrArg
+  simp [Set.EqOn]
+  intro g' _
+  apply h2
+  exists g
+  constructor
+  assumption
+  exists g'
 
 
 -- results about the prodiscrete topology
@@ -191,26 +212,6 @@ theorem lemma1 {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
   ∃ Ω: Set G, Finite Ω ∧ V x Ω ⊆ W := by
     sorry
 
-def setMul [Monoid G] (A B: Set G) : Set G :=
-  (Set.image2 fun x y => x * y) A B
-
-theorem memory_set_eq {G A: Type} [Monoid G]
-  {τ: (G → A) → G → A}
-  {S: Set G} (h1: memory_set τ S)
-  {x y: G → A} {Ω: Set G} (h2: Set.EqOn x y (setMul Ω S)):
-    Set.EqOn (τ x) (τ y) Ω := by
-  obtain ⟨_, μ, hμ⟩ := h1
-  intro g hg
-  rw [hμ x g, hμ y g]
-  apply congrArg
-  simp [Set.EqOn]
-  intro g' _
-  apply h2
-  exists g
-  constructor
-  assumption
-  exists g'
-
 -- proposition 1.4.6
 theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
   local_map τ μ ↔ equivariant τ ∧ ∀ x: G → A, τ x 1 = μ (Set.restrict S x) := by
@@ -234,7 +235,7 @@ theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [Discre
         _ = μ (S.restrict (x ∘ leftMul g)) := by sorry
 
 -- proposition 1.4.8
--- this still depends on lemma1 and memory_set_eq
+-- still depends on lemma1
 theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
   {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
   apply continuous_of_neighborhood_continuous
