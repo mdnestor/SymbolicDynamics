@@ -148,6 +148,23 @@ lemma continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [To
 def V {G A: Type} (x: G → A) (Ω: Set G): Set (G → A) :=
   {y: G → A | Set.EqOn x y Ω}
 
+-- if Ω1 ⊆ Ω2 then V(x, Ω1) ⊇ V(x, Ω2)
+theorem V_incl {G A: Type} (x: G → A) {Ω1: Set G} {Ω2: Set G} (h: Ω1 ⊆ Ω2): V x Ω2 ⊆ V x Ω1 :=
+  fun _ hy _ hg => hy (h hg)
+
+-- V(x, G) = {x}
+theorem V_univ {G A: Type} (x: G → A): V x Set.univ = {x} := by
+  simp [V]
+
+-- V(x, ∅) = G → A
+theorem V_empty {G A: Type} (x: G → A): V x ∅ = Set.univ := by
+  simp [V]
+
+-- x ∈ V(x, Ω)
+theorem x_in_V {G A: Type} (x: G → A) (Ω: Set G): x ∈ V x Ω := by
+  simp [V, Set.EqOn]
+
+-- V(x, Ω) is equal to the intersection of all cylinders of the form C(g, x g) for g ∈ Ω
 theorem V_cylinder_eq {G A: Type} (x: G → A) (Ω: Set G):
   V x Ω = Set.sInter (Set.image (fun g => cylinder g (x g)) Ω) := by
   simp [cylinder, V, Set.EqOn]
@@ -158,9 +175,6 @@ theorem V_cylinder_eq {G A: Type} (x: G → A) (Ω: Set G):
     simp_all
   · intros
     simp_all
-
-theorem x_in_V {G A: Type} (x: G → A): ∀ Ω: Set G, x ∈ V x Ω := by
-  simp [V, Set.EqOn]
 
 theorem open_contains_is_neighborhood {X: Type} [TopologicalSpace X] {U: Set X} {x: X} (h: IsOpen U) (h2: x ∈ U): U ∈ nhds x := sorry
 
