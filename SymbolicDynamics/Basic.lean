@@ -52,27 +52,32 @@ def sliding_block_code_fin {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Pr
 def sliding_block_code_correct {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: shift_space Λ) (Φ: Λ → M → B): Prop :=
   sorry
 
--- this is a special case of sliding block code where the input and output alphabets are the same, and the shift space is equal to the whole space
-def cellular_automaton {G A: Type} [Mul G] (τ: (G → A) → G → A): Prop :=
-  sliding_block_code τ
+def equivariant {G A B: Type} [Mul G] (τ: (G → A) → G → B): Prop :=
+  ∀ x: G → A, ∀ g: G, τ (x ∘ leftMul g) = τ x ∘ leftMul g
 
-lemma left_mul_comp {G: Type} [Group G] {g g': G}: leftMul g⁻¹ ∘ leftMul g' = leftMul (g⁻¹ * g') := by
+def equivariant_compose {G A B C: Type} [Mul G]
+  {τ1: (G → A) → G → B} {τ2: (G → B) → G → C}
+  (h1: equivariant τ1) (h2: equivariant τ2):
+  equivariant (τ2 ∘ τ1) := by
+  simp [equivariant]
+  intros
+  rw [h1, h2]
+
+lemma left_mul_comp {G: Type} [Group G] {g g': G}: leftMul g ∘ leftMul g' = leftMul (g * g') := by
   ext
   simp [leftMul, mul_assoc]
-
-def equivariant {G A B: Type} [Group G] (τ: (G → A) → G → B): Prop := ∀ x: G → A, ∀ g: G, τ (x ∘ (leftMul g⁻¹)) = (τ x) ∘ (leftMul g⁻¹)
 
 theorem sliding_block_equivariant {G A: Type} [Group G] {τ: (G → A) → G → B} (h: sliding_block_code τ): equivariant τ := by
   intro x g
   obtain ⟨S, _, μ, h0⟩ := h
   ext h
-  have h1: τ (x ∘ (leftMul g⁻¹)) h = μ (Set.restrict S (x ∘ (leftMul (g⁻¹ * h)))) := by
-    rw [h0 (x ∘ leftMul g⁻¹) h]
+  have h1: τ (x ∘ (leftMul g)) h = μ (Set.restrict S (x ∘ (leftMul (g * h)))) := by
+    rw [h0 (x ∘ leftMul g) h]
     rw [Function.comp.assoc]
     rw [left_mul_comp]
   calc
-    τ (x ∘ (leftMul g⁻¹)) h = μ (Set.restrict S (x ∘ (leftMul (g⁻¹ * h)))) := by rw [h1]
-                          _ = (τ x) (g⁻¹ * h) := by rw [h0 x (g⁻¹ * h)]
+    τ (x ∘ (leftMul g)) h = μ (Set.restrict S (x ∘ (leftMul (g * h)))) := by rw [h1]
+                          _ = (τ x) (g * h) := by rw [h0 x (g * h)]
 
 def setMul [Mul G] (A B: Set G) : Set G :=
   (Set.image2 fun x y => x * y) A B
@@ -96,6 +101,42 @@ theorem memory_set_eq {G A: Type} [Mul G]
   constructor
   assumption
   exists g'
+
+lemma setMul_finite {G: Type} [Mul G] {S1 S2: Set G} (h1: Finite S1) (h2: Finite S2):
+  Finite (setMul S1 S2) := sorry
+
+-- proposition 1.4.6
+theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
+  local_map τ μ ↔ equivariant τ ∧ ∀ x: G → A, τ x 1 = μ (Set.restrict S x) := by
+  apply Iff.intro
+  intro h
+  have h1: sliding_block_code τ := by
+    rw [sliding_block_code]
+    exists S
+    apply And.intro
+    exact hS
+    exists μ
+  apply And.intro
+  exact sliding_block_equivariant h1
+  intro x
+  rw [h x 1]
+  sorry -- easy
+  intro ⟨h1, h2⟩
+  intro x g
+  calc
+    τ x g = τ (x ∘ leftMul g) 1 := by sorry
+        _ = μ (S.restrict (x ∘ leftMul g)) := by sorry
+
+theorem sliding_block_compose {G A: Type} [Mul G]
+  {τ1: (G → A) → G → A} {τ2: (G → A) → G → A}
+  {S1 S2: Set G} (h1: memory_set τ1 S1) (h2: memory_set τ2 S2):
+  memory_set (τ2 ∘ τ1) (setMul S1 S2) := by
+    obtain ⟨hS1, μ1, hμ1⟩ := h1
+    obtain ⟨hS2, μ2, hμ2⟩ := h2
+    constructor
+    exact setMul_finite hS1 hS2
+    sorry
+
 
 
 -- results about the prodiscrete topology
@@ -124,6 +165,7 @@ theorem proj_continuous2 {G A: Type} [TopologicalSpace A]:
   ∀ g: G, Continuous (proj g: (G → A) → A) := by
   intro g
   exact continuous_apply g
+
 
 -- the shift map is continuous
 theorem shit_continuous {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]:
@@ -212,27 +254,6 @@ theorem lemma1 {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
   ∃ Ω: Set G, Finite Ω ∧ V x Ω ⊆ W := by
     sorry
 
--- proposition 1.4.6
-theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
-  local_map τ μ ↔ equivariant τ ∧ ∀ x: G → A, τ x 1 = μ (Set.restrict S x) := by
-  apply Iff.intro
-  intro h
-  have h1: sliding_block_code τ := by
-    rw [sliding_block_code]
-    exists S
-    apply And.intro
-    exact hS
-    exists μ
-  apply And.intro
-  exact sliding_block_equivariant h1
-  intro x
-  rw [h x 1]
-  sorry -- easy
-  intro ⟨h1, h2⟩
-  intro x g
-  calc
-    τ x g = τ (x ∘ leftMul g) 1 := by sorry
-        _ = μ (S.restrict (x ∘ leftMul g)) := by sorry
 
 -- proposition 1.4.8
 -- still depends on lemma1
