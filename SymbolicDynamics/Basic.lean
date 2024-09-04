@@ -184,7 +184,7 @@ theorem cylinder_preimage {G A: Type} (g: G) (a: A):
   rfl
 
 theorem cylinder_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A):
-  IsOpen (cylinder g a) := by
+  IsOpen (cylinder g a) := by?
   rw [cylinder_preimage]
   apply Continuous.isOpen_preimage
   exact proj_continuous g
@@ -224,7 +224,7 @@ theorem V_empty {G A: Type} (x: G → A): V x ∅ = Set.univ := by
   simp [V]
 
 -- x ∈ V(x, Ω)
-theorem x_in_V {G A: Type} (x: G → A) (Ω: Set G): x ∈ V x Ω := by
+theorem x_in_V {G A: Type} (x: G → A) (Ω: Set G): x ∈ V x Ω := by?
   simp [V, Set.EqOn]
 
 -- V(x, Ω) is equal to the intersection of all cylinders of the form C(g, x g) for g ∈ Ω
@@ -239,24 +239,45 @@ theorem V_cylinder_eq {G A: Type} (x: G → A) (Ω: Set G):
   · intros
     simp_all
 
-theorem open_contains_is_neighborhood {X: Type} [TopologicalSpace X] {U: Set X} {x: X} (h: IsOpen U) (h2: x ∈ U): U ∈ nhds x := sorry
-
 theorem V_is_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A) (Ω: Set G): IsOpen (V x Ω) := by
   sorry
 
 theorem V_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A) (Ω: Set G):
   V x Ω ∈ nhds x := by
-  exact open_contains_is_neighborhood (V_is_open x Ω) (x_in_V x Ω)
+  exact IsOpen.mem_nhds (V_is_open x Ω) (x_in_V x Ω)
+
+def neighborhood_base {X: Type} [TopologicalSpace X] (x: X) (B: Set (Set X)): Prop :=
+  B ⊆ (nhds x).sets ∧ ∀ V ∈ nhds x, ∃ U ∈ B, U ⊆ V
+
+theorem V_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A):
+  neighborhood_base x {U: Set (G → A) | ∃ Ω: Set G, Finite Ω ∧ U = V x Ω } := by
+  constructor
+  . intro U hU
+    simp_all
+    obtain ⟨Ω, hΩ⟩ := hU
+    rw [hΩ.2]
+    exact V_is_nhd x Ω
+
+  . intro V hV
+    simp
+    -- ⊢ ∃ U, (∃ Ω, Finite ↑Ω ∧ U = _root_.V x Ω) ∧ U ⊆ V
+    sorry
 
 -- "Let x: G → A and let W be a neighborhood of τ(x). Then we can find a finite subset Ω ⊆ G such that V(τ(x), Ω) ⊆ W" why..?
 theorem lemma1 {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
   {W: Set (G → A)} {x: G → A} (h2: W ∈ nhds x):
   ∃ Ω: Set G, Finite Ω ∧ V x Ω ⊆ W := by
-    sorry
-
+  have h3 := V_forms_neighborhood_base x
+  simp [neighborhood_base] at h3
+  obtain ⟨U, hU⟩ := h3.2 W h2
+  obtain ⟨Ω, hΩ⟩ := hU.1
+  exists Ω
+  constructor
+  exact hΩ.1
+  rw [←hΩ.2]
+  exact hU.2
 
 -- proposition 1.4.8
--- still depends on lemma1
 theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
   {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
   apply continuous_of_neighborhood_continuous
