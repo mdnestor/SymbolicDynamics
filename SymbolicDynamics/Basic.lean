@@ -69,13 +69,13 @@ lemma leftMul_comp {G: Type} [Semigroup G] {g g': G}: leftMul g ∘ leftMul g' =
 
 theorem sliding_block_equivariant {G A: Type} [Semigroup G] {τ: (G → A) → G → B} (h: sliding_block_code τ): equivariant τ := by
   intro x g
-  obtain ⟨S, _, μ, h0⟩ := h
-  ext h
+  obtain ⟨S, _, μ, hμ⟩ := h
+  ext g'
   simp [
-    h0 (x ∘ leftMul g) h,
+    hμ (x ∘ leftMul g) g',
     Function.comp.assoc,
     leftMul_comp,
-    ←h0 x (g * h),
+    ←hμ x (g * g'),
     leftMul
   ]
 
