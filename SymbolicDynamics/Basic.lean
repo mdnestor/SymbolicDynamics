@@ -26,6 +26,8 @@ import Mathlib.Topology.UniformSpace.Pi
 import Mathlib.Topology.Separation
 import Mathlib.Topology.Connected.TotallyDisconnected
 
+import SymbolicDynamics.ProdiscreteTopology
+
 -- definition of sliding block code based on definition 1.4.1
 
 def local_map {G A B: Type} [Mul G] {S: Set G} (τ: (G → A) → G → B) (μ: (S → A) → B): Prop :=
@@ -144,135 +146,6 @@ theorem sliding_block_compose {G A: Type} [Mul G]
     exact setMul_finite hS1 hS2
     sorry
 
-
-
--- results about the prodiscrete topology
-
--- it is both T2 (Hausdorff) and totally disconnected
-
-theorem prodiscrete_T2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  T2Space (G → A) := by
-  apply Pi.t2Space
-
-theorem prodiscrete_totally_disconnected {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  TotallyDisconnectedSpace (G → A) := by
-  apply Pi.totallyDisconnectedSpace
-
--- projection map
-def proj {G A: Type} (g: G): (G → A) → A :=
-  fun x: G → A => x g
-
--- every projection map is continuous in prodiscrete topology
--- this is the theorem continuous_apply
-
-
--- the shift map is continuous
-theorem shit_continuous {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]:
-  ∀ g: M, Continuous (fun x: M → A => x ∘ leftMul g) := by
-    sorry
-
-theorem shift_uniform_continuous {A M: Type} [Mul M] [UniformSpace A] (h: uniformity A = Filter.principal idRel):
-  ∀ g: M, UniformContinuous (fun x: M → A => x ∘ leftMul g) := by
-    sorry
-
-def cylinder {G A: Type} (g: G) (a: A): Set (G → A) :=
-  {x: G → A | x g = a}
-
-def cylinder2 {G A: Type} (g: G) (U: Set A): Set (G → A) :=
-  Set.preimage (proj g) U
-
-def elementary_cylinder {G A: Type} (g: G) (a: A): Set (G → A) :=
-  (Set.preimage (proj g) (Set.singleton a))
-
-def elementary_cylinder_eq {G A: Type} (g: G) (a: A):
-  elementary_cylinder g a = {x: G → A | x g = a} := rfl
-
-lemma prodiscrete_preimage_open
-  {A G: Type} [TopologicalSpace A] [DiscreteTopology A]
-  (Ω: Set A) (g: G): IsOpen (Set.preimage (proj g) Ω) := by
-    apply Continuous.isOpen_preimage
-    exact continuous_apply g
-    simp
-
-lemma prodiscrete_preimage_closed
-  {A G: Type} [TopologicalSpace A] [DiscreteTopology A]
-  (Ω: Set A) (g: G): IsClosed (Set.preimage (proj g) Ω) := by
-    sorry
-
-theorem cylinder_preimage {G A: Type} (g: G) (a: A):
-  cylinder g a = Set.preimage (proj g) (Set.singleton a) := by
-  rfl
-
-theorem cylinder_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A):
-  IsOpen (cylinder g a) := by
-  rw [cylinder_preimage]
-  apply prodiscrete_preimage_open
-
-theorem cylinder_closed {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A):
-  IsClosed (cylinder g a) := by
-  sorry
-
-theorem cylinder_clopen {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A): IsClopen (cylinder g a) :=
-  ⟨cylinder_closed g a, cylinder_open g a⟩
-
-
--- a set is open iff. it is a union of finite intersections of cylinders
--- is this just isOpen_pi_iff?
-
-
-def finite_intersection_of_elt_cylinders {A G: Type}
-  [TopologicalSpace A] [DiscreteTopology A] (U: Set (G → A)): Prop :=
-  ∃ I: Type, ∃ gi: I → G, ∃ ai: I → A, Finite I ∧ U = Set.sInter (Set.image (fun i => cylinder (gi i) (ai i)) Set.univ)
-
-def finite_intersection_of_elt_cylinders2 {A G: Type}
-  [TopologicalSpace A] [DiscreteTopology A] (U: Set (G → A)): Prop :=
-  ∃ L: Finset (G × A), U = Set.sInter (Set.image (fun (g, a) => cylinder g a) L)
-
-def finite_intersection_of_elt_cylinders_open {A G: Type}
-  [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}
-  (hU: finite_intersection_of_elt_cylinders U): IsOpen U := by
-  obtain ⟨I, hI⟩ := hU
-  obtain ⟨gi, ai, hh1, hh2⟩ := hI
-  simp at hh2
-  rw [hh2]
-  apply isOpen_iInter_of_finite
-  intro i
-  apply cylinder_open
-
-def union_of_finite_inter_of_cylinders {A G: Type}
-  [TopologicalSpace A] [DiscreteTopology A] (U: Set (G → A)): Prop :=
-  ∃ UU: Set (Set (G → A)), Set.sUnion UU = U ∧
-    ∀ V ∈ UU, finite_intersection_of_elt_cylinders V
-
-theorem open_of_union_of_finite_intersection_of_cylinders
-  {A G: Type} [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}
-  (h: union_of_finite_inter_of_cylinders U): IsOpen U := by
-  obtain ⟨UU, hUU1, hUU2⟩ := h
-  rw [← hUU1]
-  apply isOpen_sUnion
-  intro V hV
-  apply finite_intersection_of_elt_cylinders_open
-  apply hUU2
-  exact hV
-
-theorem union_of_finite_intersection_of_cylinders_of_open
-  {A G: Type} [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}
-  (h: IsOpen U): union_of_finite_inter_of_cylinders U := by
-  sorry
-
-theorem open_iff_union_of_finite_intersection_of_cylinders
-  {A G: Type} [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}:
-  IsOpen U ↔ union_of_finite_inter_of_cylinders U :=
-  ⟨
-    union_of_finite_intersection_of_cylinders_of_open,
-    open_of_union_of_finite_intersection_of_cylinders
-  ⟩
-
--- neighborhood definition of continuity
--- TODO find in mathlib
-lemma continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y} (h: ∀ x: X, ∀ V ∈ nhds (f x), ∃ U ∈ nhds x, Set.image f U ⊆ V): Continuous f := by
-  sorry
-
 -- V set (eq 1.3)
 def V {G A: Type} (x: G → A) (Ω: Set G): Set (G → A) :=
   {y: G → A | Set.EqOn x y Ω}
@@ -290,27 +163,38 @@ theorem V_empty {G A: Type} (x: G → A): V x ∅ = Set.univ := by
   simp [V]
 
 -- x ∈ V(x, Ω)
-theorem x_in_V {G A: Type} (x: G → A) (Ω: Set G): x ∈ V x Ω := by?
+theorem x_in_V {G A: Type} (x: G → A) (Ω: Set G): x ∈ V x Ω := by
   simp [V, Set.EqOn]
 
 -- V(x, Ω) is equal to the intersection of all cylinders of the form C(g, x g) for g ∈ Ω
 theorem V_cylinder_eq {G A: Type} (x: G → A) (Ω: Set G):
-  V x Ω = Set.sInter (Set.image (fun g => cylinder g (x g)) Ω) := by
+  V x Ω = Set.sInter (Set.image (fun g => cylinder g {x g}) Ω) := by
   simp [cylinder, V, Set.EqOn]
   ext
   rw [Set.mem_setOf_eq, Set.mem_iInter]
   apply Iff.intro
   · intros
-    simp_all
+    simp_all [proj]
   · intros
-    simp_all
+    simp_all [proj]
 
-theorem V_is_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A) (Ω: Set G): IsOpen (V x Ω) := by
-  sorry
+theorem V_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
+  (x: G → A) (Ω: Set G) (h: Finite Ω): IsOpen (V x Ω) := by
+  rw [V_cylinder_eq]
+  apply Set.Finite.isOpen_sInter
+  apply Set.Finite.image
+  exact h
+  intro U
+  simp
+  intro _ _ hU
+  rw [←hU]
+  apply cylinder_open
+  simp
 
-theorem V_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A) (Ω: Set G):
+theorem V_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
+  (x: G → A) (Ω: Set G) (h: Finite Ω):
   V x Ω ∈ nhds x := by
-  exact IsOpen.mem_nhds (V_is_open x Ω) (x_in_V x Ω)
+  exact IsOpen.mem_nhds (V_open x Ω h) (x_in_V x Ω)
 
 def neighborhood_base {X: Type} [TopologicalSpace X] (x: X) (B: Set (Set X)): Prop :=
   B ⊆ (nhds x).sets ∧ ∀ V ∈ nhds x, ∃ U ∈ B, U ⊆ V
@@ -320,9 +204,9 @@ theorem V_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [DiscreteTopo
   constructor
   . intro U hU
     simp_all
-    obtain ⟨Ω, hΩ⟩ := hU
-    rw [hΩ.2]
-    exact V_is_nhd x Ω
+    obtain ⟨Ω, hΩ1, hΩ2⟩ := hU
+    rw [hΩ2]
+    exact V_is_nhd x Ω hΩ1
 
   . intro V hV
     simp
@@ -348,19 +232,19 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
   {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
   apply continuous_of_neighborhood_continuous
   intro x W hW
-  obtain ⟨Ω, hΩ⟩ := lemma1 hW
-  let ⟨S, hS⟩ := h
+  obtain ⟨Ω, hΩ1, hΩ2⟩ := lemma1 hW
+  let ⟨S, hS1, hS2⟩ := h
   let ΩS := setMul Ω S
   exists V x ΩS
   apply And.intro
-  exact V_is_nhd x ΩS
+  exact V_is_nhd x ΩS (setMul_finite hΩ1 hS1)
   have h1: Set.image τ (V x ΩS) ⊆ V (τ x) Ω := by
     intro τy hτy
     simp [V] at hτy
     obtain ⟨y, hy⟩ := hτy
     simp [V, ←hy.2]
-    exact memory_set_eq hS hy.1
-  exact le_trans h1 hΩ.2
+    exact memory_set_eq ⟨hS1, hS2⟩ hy.1
+  exact le_trans h1 hΩ2
 
 -- definition of a cover
 -- a map U: I → Set X is a cover of a set S ⊆ X if
@@ -397,8 +281,9 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
     exists x
     apply x_in_V x
 
+
   -- extract a finite subcover
-  obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => V x (Ω x)) (fun x => V_is_open x (Ω x)) h5
+  obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => V x (Ω x)) (fun x => V_open x (Ω x) (h4 x)) h5
 
   let S := Set.sUnion (Set.image Ω F)
   exists S
