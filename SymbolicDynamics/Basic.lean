@@ -65,6 +65,15 @@ def equivariant_compose {G A B C: Type} [Mul G]
   intros
   rw [h1, h2]
 
+-- the shift map is continuous
+theorem shift_continuous {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]:
+  ∀ g: M, Continuous (fun x: M → A => x ∘ leftMul g) := by
+    sorry
+
+theorem shift_uniform_continuous {A M: Type} [Mul M] [UniformSpace A] (h: uniformity A = Filter.principal idRel):
+  ∀ g: M, UniformContinuous (fun x: M → A => x ∘ leftMul g) := by
+    sorry
+
 lemma leftMul_comp {G: Type} [Semigroup G] {g g': G}: leftMul g ∘ leftMul g' = leftMul (g * g') := by
   ext
   simp [leftMul, mul_assoc]
@@ -146,112 +155,25 @@ theorem sliding_block_compose {G A: Type} [Mul G]
     exact setMul_finite hS1 hS2
     sorry
 
--- V set (eq 1.3)
-def V {G A: Type} (x: G → A) (Ω: Set G): Set (G → A) :=
-  {y: G → A | Set.EqOn x y Ω}
-
--- if Ω1 ⊆ Ω2 then V(x, Ω1) ⊇ V(x, Ω2)
-theorem V_incl {G A: Type} (x: G → A) {Ω1: Set G} {Ω2: Set G} (h: Ω1 ⊆ Ω2): V x Ω2 ⊆ V x Ω1 :=
-  fun _ hy _ hg => hy (h hg)
-
--- V(x, G) = {x}
-theorem V_univ {G A: Type} (x: G → A): V x Set.univ = {x} := by
-  simp [V]
-
--- V(x, ∅) = G → A
-theorem V_empty {G A: Type} (x: G → A): V x ∅ = Set.univ := by
-  simp [V]
-
--- x ∈ V(x, Ω)
-theorem x_in_V {G A: Type} (x: G → A) (Ω: Set G): x ∈ V x Ω := by
-  simp [V, Set.EqOn]
-
--- V(x, Ω) is equal to the intersection of all cylinders of the form C(g, x g) for g ∈ Ω
-theorem V_cylinder_eq {G A: Type} (x: G → A) (Ω: Set G):
-  V x Ω = Set.sInter (Set.image (fun g => cylinder g {x g}) Ω) := by
-  simp [cylinder, V, Set.EqOn]
-  ext
-  rw [Set.mem_setOf_eq, Set.mem_iInter]
-  apply Iff.intro
-  · intros
-    simp_all [proj]
-  · intros
-    simp_all [proj]
-
-theorem V_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
-  (x: G → A) (Ω: Set G) (h: Finite Ω): IsOpen (V x Ω) := by
-  rw [V_cylinder_eq]
-  apply Set.Finite.isOpen_sInter
-  apply Set.Finite.image
-  exact h
-  intro U
-  simp
-  intro _ _ hU
-  rw [←hU]
-  apply cylinder_open
-  simp
-
-theorem V_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
-  (x: G → A) (Ω: Set G) (h: Finite Ω):
-  V x Ω ∈ nhds x := by
-  exact IsOpen.mem_nhds (V_open x Ω h) (x_in_V x Ω)
-
-def neighborhood_base {X: Type} [TopologicalSpace X] (x: X) (B: Set (Set X)): Prop :=
-  B ⊆ (nhds x).sets ∧ ∀ V ∈ nhds x, ∃ U ∈ B, U ⊆ V
-
-theorem V_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A):
-  neighborhood_base x {U: Set (G → A) | ∃ Ω: Set G, Finite Ω ∧ U = V x Ω } := by
-  constructor
-  . intro U hU
-    simp_all
-    obtain ⟨Ω, hΩ1, hΩ2⟩ := hU
-    rw [hΩ2]
-    exact V_is_nhd x Ω hΩ1
-
-  . intro V hV
-    simp
-    -- ⊢ ∃ U, (∃ Ω, Finite ↑Ω ∧ U = _root_.V x Ω) ∧ U ⊆ V
-    sorry
-
--- "Let x: G → A and let W be a neighborhood of τ(x). Then we can find a finite subset Ω ⊆ G such that V(τ(x), Ω) ⊆ W" why..?
-theorem lemma1 {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
-  {W: Set (G → A)} {x: G → A} (h2: W ∈ nhds x):
-  ∃ Ω: Set G, Finite Ω ∧ V x Ω ⊆ W := by
-  have h3 := V_forms_neighborhood_base x
-  simp [neighborhood_base] at h3
-  obtain ⟨U, hU⟩ := h3.2 W h2
-  obtain ⟨Ω, hΩ⟩ := hU.1
-  exists Ω
-  constructor
-  exact hΩ.1
-  rw [←hΩ.2]
-  exact hU.2
-
 -- proposition 1.4.8
 theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
   {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
   apply continuous_of_neighborhood_continuous
   intro x W hW
-  obtain ⟨Ω, hΩ1, hΩ2⟩ := lemma1 hW
+  obtain ⟨Ω, hΩ1, hΩ2⟩ := neighbor_lemma hW
   let ⟨S, hS1, hS2⟩ := h
   let ΩS := setMul Ω S
-  exists V x ΩS
+  exists neighbors x ΩS
   apply And.intro
-  exact V_is_nhd x ΩS (setMul_finite hΩ1 hS1)
-  have h1: Set.image τ (V x ΩS) ⊆ V (τ x) Ω := by
+  exact neighbors_is_nhd x ΩS (setMul_finite hΩ1 hS1)
+  have h1: Set.image τ (neighbors x ΩS) ⊆ neighbors (τ x) Ω := by
     intro τy hτy
-    simp [V] at hτy
+    simp [neighbors] at hτy
     obtain ⟨y, hy⟩ := hτy
-    simp [V, ←hy.2]
+    simp [neighbors, ←hy.2]
     exact memory_set_eq ⟨hS1, hS2⟩ hy.1
   exact le_trans h1 hΩ2
 
--- definition of a cover
--- a map U: I → Set X is a cover of a set S ⊆ X if
--- - for each i: I, U i is open
--- - S ⊆ ⋃ (i: I), U i
-def cover {X I : Type} [TopologicalSpace X] (U: I → Set X) (S: Set X): Prop :=
-  ∀ i: I, IsOpen (U i) ∧ S ⊆ ⋃ (i: I), U i
 
 -- curtis hedlund theorem reverse direction
 theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] (τ: (G → A) → G → A) (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
@@ -265,25 +187,25 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
     exact h1
 
   -- since φ is continuous, we can find for each x a finite subset Ωx such that if y ∈ V(x, Ωx) then τ x 1 = τ y 1... why?
-  have h3 : ∀ x: G → A, ∃ Ωx: Set G, Finite Ωx ∧ ∀ y: G → A, y ∈ V x Ωx → τ x 1 = τ y 1 := sorry
-
-  have Ω : (G → A) → Set G :=
-    fun x => Classical.choose (h3 x)
-
-  -- all Ω x are finite
-  have h4 : ∀ x, Finite (Ω x) := by
+  have h3: ∃ Ω: (G → A) → Set G, ∀ x: G → A, Finite (Ω x) ∧ ∀ y: G → A, y ∈ neighbors x (Ω x) → τ x 1 = τ y 1 :=
     sorry
 
+  obtain ⟨Ω, hΩ⟩ := h3
+
+  have h4 : ∀ x, Finite (Ω x) := by
+    intro x
+    exact (hΩ x).1
+
   -- the V x (Ω x) cover the whole space
-  have h5 : Set.univ ⊆ ⋃ x, V x (Ω x) := by
+  have h5 : Set.univ ⊆ ⋃ x, neighbors x (Ω x) := by
     intro x _
     simp
     exists x
-    apply x_in_V x
+    apply x_in_neighbors x
 
 
   -- extract a finite subcover
-  obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => V x (Ω x)) (fun x => V_open x (Ω x) (h4 x)) h5
+  obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => neighbors x (Ω x)) (fun x => neighbors_open x (Ω x) (h4 x)) h5
 
   let S := Set.sUnion (Set.image Ω F)
   exists S
