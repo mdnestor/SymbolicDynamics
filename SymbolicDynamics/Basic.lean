@@ -111,7 +111,6 @@ lemma leftMul_one {G A: Type} {x: G → A} [Monoid G]: x ∘ leftMul 1 = x := by
 
 lemma eval_at_one {G A: Type} [Group G] {τ: (G → A) → G → A}
   (x: G → A) (g: G) (h: equivariant τ): τ x g = τ (x ∘ leftMul g) 1 := by
-  -- simp [equivariant] at h
   rw [h]
   simp [leftMul]
 
@@ -163,16 +162,8 @@ theorem prodiscrete_totally_disconnected {G A: Type} [TopologicalSpace A] [Discr
 def proj {G A: Type} (g: G): (G → A) → A :=
   fun x: G → A => x g
 
--- every projection map is continuous in prodiscrete topology. this seems to hold even without DiscreteTopology which is sus
-theorem proj_continuous {G A: Type} [TopologicalSpace A]:
-  ∀ g: G, Continuous (proj g: (G → A) → A) := by
-  intro g
-  exact continuous_apply g
-
-theorem proj_continuous2 {G A: Type} [TopologicalSpace A]:
-  ∀ g: G, Continuous (proj g: (G → A) → A) := by
-  intro g
-  exact continuous_apply g
+-- every projection map is continuous in prodiscrete topology
+-- this is the theorem continuous_apply
 
 
 -- the shift map is continuous
@@ -319,7 +310,7 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
 
   have hφ : Continuous φ := by
     apply Continuous.comp
-    exact proj_continuous 1
+    exact continuous_apply 1
     exact h1
 
   -- since φ is continuous, we can find for each x a finite subset Ωx such that if y ∈ V(x, Ωx) then τ x 1 = τ y 1... why?
