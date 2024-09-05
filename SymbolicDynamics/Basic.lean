@@ -105,27 +105,35 @@ theorem memory_set_eq {G A: Type} [Mul G]
 lemma setMul_finite {G: Type} [Mul G] {S1 S2: Set G} (h1: Finite S1) (h2: Finite S2):
   Finite (setMul S1 S2) := sorry
 
+lemma leftMul_one {G A: Type} {x: G → A} [Monoid G]: x ∘ leftMul 1 = x := by
+  ext
+  simp [leftMul]
+
+lemma eval_at_one {G A: Type} [Group G] {τ: (G → A) → G → A}
+  (x: G → A) (g: G) (h: equivariant τ): τ x g = τ (x ∘ leftMul g) 1 := by
+  -- simp [equivariant] at h
+  rw [h]
+  simp [leftMul]
+
 -- proposition 1.4.6
-theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
+theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
+  {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
   local_map τ μ ↔ equivariant τ ∧ ∀ x: G → A, τ x 1 = μ (Set.restrict S x) := by
-  apply Iff.intro
-  intro h
-  have h1: sliding_block_code τ := by
-    rw [sliding_block_code]
-    exists S
-    apply And.intro
-    exact hS
-    exists μ
-  apply And.intro
-  exact sliding_block_equivariant h1
-  intro x
-  rw [h x 1]
-  sorry -- easy
-  intro ⟨h1, h2⟩
-  intro x g
-  calc
-    τ x g = τ (x ∘ leftMul g) 1 := by sorry
-        _ = μ (S.restrict (x ∘ leftMul g)) := by sorry
+  constructor
+  . intro h
+    have h1: sliding_block_code τ := by
+      rw [sliding_block_code]
+      exists S
+      constructor
+      exact hS
+      exists μ
+    constructor
+    exact sliding_block_equivariant h1
+    intro x
+    simp [h x, leftMul_one]
+  . intro ⟨h1, h2⟩ x g
+    rw [←h2 (x ∘ leftMul g), h1]
+    simp [leftMul]
 
 theorem sliding_block_compose {G A: Type} [Mul G]
   {τ1: (G → A) → G → A} {τ2: (G → A) → G → A}
