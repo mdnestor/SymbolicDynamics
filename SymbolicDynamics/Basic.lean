@@ -63,21 +63,21 @@ def equivariant_compose {G A B C: Type} [Mul G]
   intros
   rw [h1, h2]
 
-lemma left_mul_comp {G: Type} [Group G] {g g': G}: leftMul g ∘ leftMul g' = leftMul (g * g') := by
+lemma leftMul_comp {G: Type} [Monoid G] {g g': G}: leftMul g ∘ leftMul g' = leftMul (g * g') := by
   ext
   simp [leftMul, mul_assoc]
 
-theorem sliding_block_equivariant {G A: Type} [Group G] {τ: (G → A) → G → B} (h: sliding_block_code τ): equivariant τ := by
+theorem sliding_block_equivariant {G A: Type} [Monoid G] {τ: (G → A) → G → B} (h: sliding_block_code τ): equivariant τ := by
   intro x g
   obtain ⟨S, _, μ, h0⟩ := h
   ext h
-  have h1: τ (x ∘ (leftMul g)) h = μ (Set.restrict S (x ∘ (leftMul (g * h)))) := by
-    rw [h0 (x ∘ leftMul g) h]
-    rw [Function.comp.assoc]
-    rw [left_mul_comp]
-  calc
-    τ (x ∘ (leftMul g)) h = μ (Set.restrict S (x ∘ (leftMul (g * h)))) := by rw [h1]
-                          _ = (τ x) (g * h) := by rw [h0 x (g * h)]
+  simp [
+    h0 (x ∘ leftMul g) h,
+    Function.comp.assoc,
+    leftMul_comp,
+    ←h0 x (g * h),
+    leftMul
+  ]
 
 def setMul [Mul G] (A B: Set G) : Set G :=
   (Set.image2 fun x y => x * y) A B
