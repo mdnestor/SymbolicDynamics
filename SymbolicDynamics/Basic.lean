@@ -203,7 +203,6 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
     exists x
     apply x_in_neighbors x
 
-
   -- extract a finite subcover
   obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => neighbors x (Ω x)) (fun x => neighbors_open x (Ω x) (h4 x)) h5
 
@@ -221,12 +220,15 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
 
   apply And.intro
   exact h6
+
+  -- I can tell a quotient is going to be involved here...
   let μ : (S → A) → A := sorry
   exists μ
   apply (cellular_automata_iff h6 μ).mpr
   apply And.intro
   exact h2
   intro x
+
   sorry
 
 -- theorem 1.8.1
