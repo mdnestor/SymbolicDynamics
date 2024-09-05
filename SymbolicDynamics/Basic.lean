@@ -179,7 +179,7 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
 
 lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {τ: (G → A) → G → A} (h1: Continuous τ):
   ∀ x: G → A, ∃ Ω: Set G, Finite Ω ∧ ∀ y: G → A, y ∈ neighbors x Ω → τ x 1 = τ y 1 := by
-    let φ := (fun x: G → A => x 1) ∘ τ
+    let φ := proj 1 ∘ τ
     have hφ : Continuous φ := Continuous.comp (continuous_apply 1) h1
     intro x
     have hU: {φ x} ∈ nhds (φ x) := by simp
@@ -242,8 +242,15 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
   apply And.intro
   exact h6
 
-  -- I can tell a quotient is going to be involved here...
-  let μ : (S → A) → A := sorry
+  let φ := proj 1 ∘ τ
+  let r: (G → A) → (G → A) → Prop := fun y z: (G → A) => Set.EqOn y z S
+  have hr: ∀ y z: G → A, r y z → φ y = φ z := sorry
+  #check Quot.lift φ hr
+  -- maybe define bijectionve between Quot r and S → A
+  have bij: (S → A) → Quot r := sorry
+  #check Quot.mk
+
+  let μ : (S → A) → A := (Quot.lift φ hr) ∘ bij
   exists μ
   apply (cellular_automata_iff h6 μ).mpr
   apply And.intro
