@@ -176,19 +176,40 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
 
 
 -- curtis hedlund theorem reverse direction
-theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] (τ: (G → A) → G → A) (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
-  -- will need eventually: G → A is compact
 
-  let φ := (fun x: G → A => x 1) ∘ τ
+lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {τ: (G → A) → G → A} (h1: Continuous τ):
+  ∀ x: G → A, ∃ Ω: Set G, Finite Ω ∧ ∀ y: G → A, y ∈ neighbors x Ω → τ x 1 = τ y 1 := by
+    let φ := (fun x: G → A => x 1) ∘ τ
+    have hφ : Continuous φ := Continuous.comp (continuous_apply 1) h1
+    intro x
+    have hU: {φ x} ∈ nhds (φ x) := by simp
+    obtain ⟨V, hV1, hV2⟩ := continuous_of_neighborhood_continuous2 hφ x {φ x} hU
+    have h4 := (neighbors_forms_neighborhood_base x).2
+    specialize h4 V hV1
+    obtain ⟨U, hU1, hU2⟩ := h4
+    simp_all
+    obtain ⟨Ω, hΩ1, hΩ2⟩ := hU1
+    exists Ω
+    constructor
+    exact hΩ1
+    intro y hy
+    rw [← hΩ2] at hy
+    have hy2 := hU2 hy
+    have hy3 := hV2
+    specialize hy3 y
+    have hy4 := hy3 hy2
+    calc
+      τ x 1 = φ x := by rfl
+          _ = φ y := by rw [Eq.symm hy4]
+          _ = τ y 1 := by rfl
 
-  have hφ : Continuous φ := by
-    apply Continuous.comp
-    exact continuous_apply 1
-    exact h1
+theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
+  (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
 
-  -- since φ is continuous, we can find for each x a finite subset Ωx such that if y ∈ V(x, Ωx) then τ x 1 = τ y 1... why?
-  have h3: ∃ Ω: (G → A) → Set G, ∀ x: G → A, Finite (Ω x) ∧ ∀ y: G → A, y ∈ neighbors x (Ω x) → τ x 1 = τ y 1 :=
-    sorry
+  have h3: ∃ Ω: (G → A) → Set G, ∀ x: G → A, Finite (Ω x) ∧ ∀ y: G → A, y ∈ neighbors x (Ω x) → τ x 1 = τ y 1 := by
+    exists fun x => Classical.choose (lemma2 h1 x)
+    intro x
+    exact Classical.choose_spec (lemma2 h1 x)
 
   obtain ⟨Ω, hΩ⟩ := h3
 
