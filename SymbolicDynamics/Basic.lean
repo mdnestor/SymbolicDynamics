@@ -178,16 +178,35 @@ theorem shift_uniform_continuous {A M: Type} [Mul M] [UniformSpace A] (h: unifor
 def cylinder {G A: Type} (g: G) (a: A): Set (G → A) :=
   {x: G → A | x g = a}
 
+def cylinder2 {G A: Type} (g: G) (U: Set A): Set (G → A) :=
+  Set.preimage (proj g) U
+
+def elementary_cylinder {G A: Type} (g: G) (a: A): Set (G → A) :=
+  (Set.preimage (proj g) (Set.singleton a))
+
+def elementary_cylinder_eq {G A: Type} (g: G) (a: A):
+  elementary_cylinder g a = {x: G → A | x g = a} := rfl
+
+lemma prodiscrete_preimage_open
+  {A G: Type} [TopologicalSpace A] [DiscreteTopology A]
+  (Ω: Set A) (g: G): IsOpen (Set.preimage (proj g) Ω) := by
+    apply Continuous.isOpen_preimage
+    exact continuous_apply g
+    simp
+
+lemma prodiscrete_preimage_closed
+  {A G: Type} [TopologicalSpace A] [DiscreteTopology A]
+  (Ω: Set A) (g: G): IsClosed (Set.preimage (proj g) Ω) := by
+    sorry
+
 theorem cylinder_preimage {G A: Type} (g: G) (a: A):
   cylinder g a = Set.preimage (proj g) (Set.singleton a) := by
   rfl
 
 theorem cylinder_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A):
-  IsOpen (cylinder g a) := by?
+  IsOpen (cylinder g a) := by
   rw [cylinder_preimage]
-  apply Continuous.isOpen_preimage
-  exact proj_continuous g
-  simp
+  apply prodiscrete_preimage_open
 
 theorem cylinder_closed {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A):
   IsClosed (cylinder g a) := by
@@ -196,10 +215,58 @@ theorem cylinder_closed {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g
 theorem cylinder_clopen {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A): IsClopen (cylinder g a) :=
   ⟨cylinder_closed g a, cylinder_open g a⟩
 
+
 -- a set is open iff. it is a union of finite intersections of cylinders
+-- is this just isOpen_pi_iff?
+
+
+def finite_intersection_of_elt_cylinders {A G: Type}
+  [TopologicalSpace A] [DiscreteTopology A] (U: Set (G → A)): Prop :=
+  ∃ I: Type, ∃ gi: I → G, ∃ ai: I → A, Finite I ∧ U = Set.sInter (Set.image (fun i => cylinder (gi i) (ai i)) Set.univ)
+
+def finite_intersection_of_elt_cylinders2 {A G: Type}
+  [TopologicalSpace A] [DiscreteTopology A] (U: Set (G → A)): Prop :=
+  ∃ L: Finset (G × A), U = Set.sInter (Set.image (fun (g, a) => cylinder g a) L)
+
+def finite_intersection_of_elt_cylinders_open {A G: Type}
+  [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}
+  (hU: finite_intersection_of_elt_cylinders U): IsOpen U := by
+  obtain ⟨I, hI⟩ := hU
+  obtain ⟨gi, ai, hh1, hh2⟩ := hI
+  simp at hh2
+  rw [hh2]
+  apply isOpen_iInter_of_finite
+  intro i
+  apply cylinder_open
+
+def union_of_finite_inter_of_cylinders {A G: Type}
+  [TopologicalSpace A] [DiscreteTopology A] (U: Set (G → A)): Prop :=
+  ∃ UU: Set (Set (G → A)), Set.sUnion UU = U ∧
+    ∀ V ∈ UU, finite_intersection_of_elt_cylinders V
+
+theorem open_of_union_of_finite_intersection_of_cylinders
+  {A G: Type} [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}
+  (h: union_of_finite_inter_of_cylinders U): IsOpen U := by
+  obtain ⟨UU, hUU1, hUU2⟩ := h
+  rw [← hUU1]
+  apply isOpen_sUnion
+  intro V hV
+  apply finite_intersection_of_elt_cylinders_open
+  apply hUU2
+  exact hV
+
+theorem union_of_finite_intersection_of_cylinders_of_open
+  {A G: Type} [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}
+  (h: IsOpen U): union_of_finite_inter_of_cylinders U := by
+  sorry
+
 theorem open_iff_union_of_finite_intersection_of_cylinders
   {A G: Type} [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}:
-  True := sorry -- IsOpen U ↔ ∃ I: Type, ∀ i: I, ∃ J: Type, Finite J ∧ U = Set.sUnion
+  IsOpen U ↔ union_of_finite_inter_of_cylinders U :=
+  ⟨
+    union_of_finite_intersection_of_cylinders_of_open,
+    open_of_union_of_finite_intersection_of_cylinders
+  ⟩
 
 -- neighborhood definition of continuity
 -- TODO find in mathlib
