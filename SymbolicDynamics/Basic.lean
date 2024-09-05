@@ -26,7 +26,7 @@ import Mathlib.Topology.UniformSpace.Pi
 import Mathlib.Topology.Separation
 import Mathlib.Topology.Connected.TotallyDisconnected
 
--- definition 1.4.1
+-- definition of sliding block code based on definition 1.4.1
 
 def local_map {G A B: Type} [Mul G] {S: Set G} (τ: (G → A) → G → B) (μ: (S → A) → B): Prop :=
   ∀ x: G → A, ∀ g: G, τ x g = μ (Set.restrict S (x ∘ (leftMul g)))
@@ -63,11 +63,11 @@ def equivariant_compose {G A B C: Type} [Mul G]
   intros
   rw [h1, h2]
 
-lemma leftMul_comp {G: Type} [Monoid G] {g g': G}: leftMul g ∘ leftMul g' = leftMul (g * g') := by
+lemma leftMul_comp {G: Type} [Semigroup G] {g g': G}: leftMul g ∘ leftMul g' = leftMul (g * g') := by
   ext
   simp [leftMul, mul_assoc]
 
-theorem sliding_block_equivariant {G A: Type} [Monoid G] {τ: (G → A) → G → B} (h: sliding_block_code τ): equivariant τ := by
+theorem sliding_block_equivariant {G A: Type} [Semigroup G] {τ: (G → A) → G → B} (h: sliding_block_code τ): equivariant τ := by
   intro x g
   obtain ⟨S, _, μ, h0⟩ := h
   ext h
