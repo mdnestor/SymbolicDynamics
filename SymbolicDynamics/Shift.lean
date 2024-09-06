@@ -21,8 +21,53 @@ import Mathlib.Topology.Connected.TotallyDisconnected
 import SymbolicDynamics.ProdiscreteTopology
 
 
-def shift {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (g: M): (M → A) → (M → A) :=
+def shift {M A: Type} [Mul M] (g: M): (M → A) → (M → A) :=
   fun x => x ∘ leftMul g
+
+-- let V be open set
+-- then V = ∪ ∩ C
+-- want to show preimage of V is open
+-- σ ^(-1) (V) = σ ^(-1) ∪ ∩ C = ∪ ∩ σ ^(-1) C
+-- so it suffices to show the preimage of every cylinder is open
+
+-- cylinder is {x: G → A | x g  ∈ S}
+-- i think the preimage by shift is another cylinder lol
+
+theorem shift_preimage_cylinder_eq {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]
+  (g g': M) (S: Set A):  Set.preimage (shift g) (cylinder g' S) = cylinder (g * g') S := by
+  rfl
+
+theorem shift_preimage_cylinder_open {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]
+  (g g': M) (S: Set A):  IsOpen (Set.preimage (shift g) (cylinder g' S)) := by
+  rw [shift_preimage_cylinder_eq]
+  apply cylinder_open
+  simp
+
+theorem shift_continuous {M A: Type} [Mul M] (g: M) [TopologicalSpace A] [DiscreteTopology A]:
+  Continuous (fun x: M → A => x ∘ leftMul g) := by
+  constructor
+  intro V hV
+  have hV2 := union_of_finite_intersection_of_cylinders_of_open hV
+  simp [union_of_finite_inter_of_cylinders, finite_intersection_of_cylinders] at hV2
+  obtain ⟨ UU, hUU⟩ := hV2
+  rw [← hUU.1]
+  simp
+  apply isOpen_sUnion
+  intro U
+  simp
+  intro x hx
+  rw [← hx]
+  apply isOpen_sUnion
+  intro U2 hU2
+  simp at hU2
+  rw [← hU2.2]
+  obtain ⟨ I, hI1, hI2 ⟩ := hUU.2 x hU2.1
+  obtain ⟨ g, a, hag⟩ := hI2
+  rw [hag]
+  rw [Set.preimage_iInter]
+  apply isOpen_iInter_of_finite
+  intro i
+  apply shift_preimage_cylinder_open
 
 def subshift {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (S: Set (M → A)): Prop :=
   IsClosed S ∧ ∀ x ∈ S, ∀ g: M, shift g x ∈ S
