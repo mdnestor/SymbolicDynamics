@@ -28,30 +28,25 @@ import Mathlib.Topology.Connected.TotallyDisconnected
 
 import SymbolicDynamics.ProdiscreteTopology
 
--- definition of sliding block code based on definition 1.4.1
-
+-- definition of sliding block code
 def local_map {G A B: Type} [Mul G] {S: Set G} (τ: (G → A) → G → B) (μ: (S → A) → B): Prop :=
   ∀ x: G → A, ∀ g: G, τ x g = μ (Set.restrict S (x ∘ (leftMul g)))
 
 def memory_set {G A B: Type} [Mul G] (τ: (G → A) → G → B) (S: Set G): Prop :=
   Finite S ∧ ∃ μ: (S → A) → B, local_map τ μ
 
-def memory_finset {G A B: Type} [Mul G] (τ: (G → A) → G → B) (S: Finset G): Prop :=
-  ∃ μ: (S → A) → B, local_map τ μ
-
-def shift_space {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (S: Set (M → A)): Prop :=
-  IsClosed S ∧ ∀ x ∈ S, ∀ g: M, x ∘ leftMul g ∈ S
-
-def window {A M: Type} (Λ: Set (M → A)) (N: Set M): Set (N → A) :=
-  {w: N → A | ∃ x ∈ Λ, w = Set.restrict N x}
-
 def sliding_block_code {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :=
   ∃ S: Set M, memory_set Φ S
 
-def sliding_block_code_fin {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :=
-  ∃ S: Finset M, memory_finset Φ S
+-- a cellular automata is a sliding block code whose input/output type are the same
+def cellular_automata {A M: Type} [Mul M] (Φ: (M → A) → M → A): Prop :=
+  sliding_block_code Φ
 
-def sliding_block_code_correct {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: shift_space Λ) (Φ: Λ → M → B): Prop :=
+-- more general definition using shift spaces
+def shift_space {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (S: Set (M → A)): Prop :=
+  IsClosed S ∧ ∀ x ∈ S, ∀ g: M, x ∘ leftMul g ∈ S
+
+def sliding_block_code_v2 {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: shift_space Λ) (Φ: Λ → M → B): Prop :=
   sorry
 
 def equivariant {G A B: Type} [Mul G] (τ: (G → A) → G → B): Prop :=
@@ -242,15 +237,10 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
   apply And.intro
   exact h6
 
-  let φ := proj 1 ∘ τ
-  let r: (G → A) → (G → A) → Prop := fun y z: (G → A) => Set.EqOn y z S
-  have hr: ∀ y z: G → A, r y z → φ y = φ z := sorry
-  #check Quot.lift φ hr
-  -- maybe define bijectionve between Quot r and S → A
-  have bij: (S → A) → Quot r := sorry
-  #check Quot.mk
+  --let φ := proj 1 ∘ τ
+  -- idea: use a quotient map
 
-  let μ : (S → A) → A := (Quot.lift φ hr) ∘ bij
+  let μ : (S → A) → A := sorry
   exists μ
   apply (cellular_automata_iff h6 μ).mpr
   apply And.intro
