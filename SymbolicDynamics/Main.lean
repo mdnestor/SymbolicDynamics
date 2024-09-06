@@ -43,8 +43,11 @@ def cellular_automata {A M: Type} [Mul M] (Φ: (M → A) → M → A): Prop :=
   sliding_block_code Φ
 
 -- more general definition using shift spaces
-def shift_space {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (S: Set (M → A)): Prop :=
-  IsClosed S ∧ ∀ x ∈ S, ∀ g: M, x ∘ leftMul g ∈ S
+def shift {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (g: M): (M → A) → (M → A) :=
+  fun x => x ∘ leftMul g
+
+def subshift {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (S: Set (M → A)): Prop :=
+  IsClosed S ∧ ∀ x ∈ S, ∀ g: M, shift g x ∈ S
 
 def sliding_block_code_v2 {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: shift_space Λ) (Φ: Λ → M → B): Prop :=
   sorry
