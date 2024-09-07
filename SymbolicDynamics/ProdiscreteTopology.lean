@@ -13,8 +13,12 @@ import Mathlib.Topology.Separation
 import Mathlib.Topology.Connected.TotallyDisconnected
 
 -- the prodiscrete topology is the product of discrete spaces via the Π construction
-def prodiscrete {G A: Type} [TopologicalSpace A] [DiscreteTopology A]: TopologicalSpace (G → A) :=
+def product_space (G A: Type) [TopologicalSpace A]: TopologicalSpace (G → A) :=
   Pi.topologicalSpace
+
+#check Pi.topologicalSpace
+def prodiscrete_space (G A: Type) [TopologicalSpace A] [DiscreteTopology A]: TopologicalSpace (G → A) :=
+  product_space G A
 
 -- it is both T2 (Hausdorff) and totally disconnected
 theorem prodiscrete_T2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
@@ -31,6 +35,7 @@ theorem prodiscrete_compact {G A: Type} [TopologicalSpace A] [DiscreteTopology A
   apply Pi.compactSpace
 
 -- projection map
+@[simp]
 def proj {G A: Type} (g: G): (G → A) → A :=
   fun x: G → A => x g
 
@@ -55,6 +60,15 @@ theorem prodiscrete_cylinder_open {G A: Type} [TopologicalSpace A] [DiscreteTopo
 theorem cylinder_closed {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A):
   IsClosed (cylinder g {a}) := by
   sorry
+
+-- set of cylinders
+def cylinders (G A: Type):
+  Set (Set (G → A)) := {U: Set (G → A) | ∃ g: G, ∃ S: Set A, cylinder g S = U}
+
+def prodiscrete_space_eq {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+  product_space G A = TopologicalSpace.generateFrom (cylinders G A) := by
+  sorry
+
 
 /--/
 theorem cylinder_clopen {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A): IsClopen (cylinder g {a}) :=
