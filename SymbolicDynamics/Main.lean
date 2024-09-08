@@ -27,6 +27,7 @@ import Mathlib.Topology.Separation
 import Mathlib.Topology.Connected.TotallyDisconnected
 
 import SymbolicDynamics.ProdiscreteTopology
+import SymbolicDynamics.Shift
 
 -- definition of sliding block code
 def local_map {G A B: Type} [Mul G] {S: Set G} (τ: (G → A) → G → B) (μ: (S → A) → B): Prop :=
@@ -42,14 +43,7 @@ def sliding_block_code {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :
 def cellular_automata {A M: Type} [Mul M] (Φ: (M → A) → M → A): Prop :=
   sliding_block_code Φ
 
--- more general definition using shift spaces
-def shift {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (g: M): (M → A) → (M → A) :=
-  fun x => x ∘ leftMul g
-
-def subshift {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (S: Set (M → A)): Prop :=
-  IsClosed S ∧ ∀ x ∈ S, ∀ g: M, shift g x ∈ S
-
-def sliding_block_code_v2 {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: shift_space Λ) (Φ: Λ → M → B): Prop :=
+def sliding_block_code_v2 {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: subshift Λ) (Φ: Λ → M → B): Prop :=
   sorry
 
 def equivariant {G A B: Type} [Mul G] (τ: (G → A) → G → B): Prop :=
@@ -63,14 +57,17 @@ def equivariant_compose {G A B C: Type} [Mul G]
   intros
   rw [h1, h2]
 
--- the shift map is continuous
-theorem shift_continuous {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]:
-  ∀ g: M, Continuous (fun x: M → A => x ∘ leftMul g) := by
-    sorry
-
 theorem shift_uniform_continuous {A M: Type} [Mul M] [UniformSpace A] (h: uniformity A = Filter.principal idRel):
   ∀ g: M, UniformContinuous (fun x: M → A => x ∘ leftMul g) := by
     sorry
+
+theorem subshift_preimage {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] [Finite A]
+  {τ: (M → A) → M → B} {U: Set (M → A)} (h1: sliding_block_code τ) (h2: subshift U): subshift (Set.image τ U) := by
+  sorry
+
+theorem subshift_image {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
+  {τ: (M → A) → M → B} {V: Set (M → B)} (h1: sliding_block_code τ) (h2: subshift V): subshift (Set.preimage τ V) := by
+  sorry
 
 lemma leftMul_comp {G: Type} [Semigroup G] {g g': G}: leftMul g ∘ leftMul g' = leftMul (g * g') := by
   ext
@@ -125,7 +122,7 @@ lemma eval_at_one {G A: Type} [Group G] {τ: (G → A) → G → A}
 
 -- proposition 1.4.6
 theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
-  {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
+  {τ: (G → A) → G → B} {S: Set G} (hS: Finite S) (μ: (S → A) → B):
   local_map τ μ ↔ equivariant τ ∧ ∀ x: G → A, τ x 1 = μ (Set.restrict S x) := by
   constructor
   . intro h
@@ -256,7 +253,7 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
 theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] (τ: (G → A) → G → A): sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
   apply Iff.intro
   exact fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩
-  exact fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant τ h1 h2
+  exact fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2
 
 theorem uniform_continuous_of_sliding_block_code {G A: Type} [Group G] [UniformSpace A] {τ: (G → A) → G → A} (h: uniformity A = Filter.principal idRel) (h1: sliding_block_code τ): UniformContinuous τ :=
   sorry
