@@ -29,10 +29,10 @@ theorem shift_preimage_cylinder_eq {G A: Type} [Mul G] (g g': G) (S: Set A):
 
 theorem shift_continuous {M A: Type} [Mul M] (g: M) [TopologicalSpace A] [DiscreteTopology A]:
   Continuous (fun x: M → A => shift g x) := by
-  apply (continuous_iff_preimage_basic_open prodiscrete_generateFrom_cylinders (shift g)).mpr
+  apply (continuous_iff_preimage_basic_open pi_generateFrom_cylinders (shift g)).mpr
   intro C hC
-  obtain ⟨g, U, hC⟩ := hC
-  rw [hC]
+  obtain ⟨g, U, _, hC2⟩ := hC
+  rw [hC2]
   rw [shift_preimage_cylinder_eq]
   apply cylinder_open
   apply isOpen_discrete
