@@ -167,9 +167,8 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
     exact memory_set_eq ⟨hS1, hS2⟩ hy.1
   exact le_trans h1 hΩ2
 
-
 -- curtis hedlund theorem reverse direction
-lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {τ: (G → A) → G → A} (h1: Continuous τ):
+theorem exists_neighbor_eqAt_one {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {τ: (G → A) → G → A} (h1: Continuous τ):
   ∀ x: G → A, ∃ Ω: Set G, Finite Ω ∧ ∀ y: G → A, y ∈ neighbors x Ω → τ x 1 = τ y 1 := by
     let φ := proj 1 ∘ τ
     have hφ : Continuous φ := Continuous.comp (continuous_apply 1) h1
@@ -191,22 +190,14 @@ lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {�
           _ = φ y := by rw [Eq.symm ((hV2 y) (hU2 hy))]
           _ = τ y 1 := by rfl
 
--- lemma: suppose F: A^G → A
--- and S is a subset of F
--- suppose for all x,y ∈ A^G if x|S = y|S then F(x) = F(y)
--- then there is a unique map f: A^S → A
-
---
-
-
 theorem Set.eqOn_trans
   {X Y: Type} {S: Set X} {f g h: X → Y}
   (h1: Set.EqOn f g S) (h2: Set.EqOn g h S): Set.EqOn f h S := by
   intro _ hx
   exact Eq.trans (h1 hx) (h2 hx)
 
-lemma set_EqOn_eqv {G A: Type} {φ: (G → A) → A} {S: Set G}:
-  Equivalence (fun x y: G → A => Set.EqOn x y S):= by
+lemma set_EqOn_eqv {X Y: Type} (S: Set X):
+  Equivalence (fun x y: X → Y => Set.EqOn x y S):= by
   constructor
   intro x
   exact Set.eqOn_refl x S
@@ -215,83 +206,67 @@ lemma set_EqOn_eqv {G A: Type} {φ: (G → A) → A} {S: Set G}:
   intro _ _ _ h1 h2
   exact Set.eqOn_trans h1 h2
 
-lemma lemma3 {G A: Type} {φ: (G → A) → A} {S: Set G}
+def set_EqOn_setoid {X: Type} (S: Set X) (Y: Type):
+  Setoid (X → Y) := {
+    r := fun x y: X → Y => Set.EqOn x y S
+    iseqv := set_EqOn_eqv S
+  }
+
+def set_EqOn_quotient {X Y: Type} (S: Set X) :=
+  Quotient (set_EqOn_setoid S Y)
+
+theorem exists_local_map {G A: Type} {φ: (G → A) → A} {S: Set G}
   (h: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y):
   ∃ μ: (S → A) → A, ∀ x: G → A, φ x = μ (Set.restrict S x) := by
+  have := set_EqOn_setoid S A
+  have h1: ∀ (x y : G → A), x ≈ y → φ x = φ y := sorry
+  let μ := Quotient.lift φ h1
+  -- prove there is bijection between Quotient this and S → Y?
   sorry
-
-#check Quot.lift
-example {F: (X → Y) → Y} {S: Set X}
-  (h: ∀ u v: X → Y, Set.EqOn u v S → F x = F y):
-  ∃ f: (S → Y) → Y, ∀ u: X → Y, F u = f (Set.restrict S u) := by
-  let
 
 theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
   (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
-
   have h3: ∃ Ω: (G → A) → Set G, ∀ x: G → A, Finite (Ω x) ∧ ∀ y: G → A, y ∈ neighbors x (Ω x) → τ x 1 = τ y 1 := by
-    exists fun x => Classical.choose (lemma2 h1 x)
-    intro x
-    exact Classical.choose_spec (lemma2 h1 x)
-
+    exists fun x => Classical.choose (exists_neighbor_eqAt_one h1 x)
+    exact fun x => Classical.choose_spec (exists_neighbor_eqAt_one h1 x)
   obtain ⟨Ω, hΩ⟩ := h3
-
-  have h4 : ∀ x, Finite (Ω x) := by
-    intro x
-    exact (hΩ x).1
-
-  -- the V x (Ω x) cover the whole space
+  have h4 : ∀ x, Finite (Ω x) := fun x => (hΩ x).1
   have h5 : Set.univ ⊆ ⋃ x, neighbors x (Ω x) := by
     intro x _
     simp
     exists x
     apply x_in_neighbors x
-
-  -- extract a finite subcover
   obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => neighbors x (Ω x)) (fun x => neighbors_open x (Ω x) (h4 x)) h5
   simp at hF
   let S := Set.sUnion (Set.image Ω F)
   exists S
-
   have h6 : Finite S := by
     apply Set.Finite.sUnion
     exact Set.Finite.image Ω (by simp)
     intro _ hΩx
-    simp [Set.image] at hΩx
+    rw [Set.image] at hΩx
     obtain ⟨x, hx⟩ := hΩx
     rw [←hx.2]
     exact h4 x
-
-  apply And.intro
+  constructor
   exact h6
-
-  let φ := proj 1 ∘ τ
-  -- let x0 be such that y in V(x0, Ω x0)
   have h7: ∀ x: G → A, ∃ x0 ∈ F, x ∈ neighbors x0 (Ω x0) := by
     apply Set.exists_set_mem_of_union_eq_top
     apply Set.eq_univ_of_univ_subset
     simp
     exact hF
-
-  have h8: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y := by
+  have h8: ∀ x ∈ F, Ω x ⊆ S := by
+    intro x _
+    apply Set.subset_sUnion_of_mem
+    exists x
+  have h9: ∀ x y: G → A, Set.EqOn x y S → (proj 1) (τ x) = (proj 1) (τ y) := by
     intro x y h
     obtain ⟨x0, hx01, hx02⟩ := h7 x
-    have h10: Ω x0 ⊆ S := by
-      apply Set.subset_sUnion_of_mem
-      exists x0
-    have h11: y ∈ neighbors x (Ω x0) := Set.EqOn.mono h10 h
-    have h12: y ∈ neighbors x0 (Ω x0) := Set.EqOn.trans hx02 h11
-    have h13: τ x 1 = τ y 1 := by
-      rw [←(hΩ x0).2 x hx02, (hΩ x0).2 y h12]
-    exact h13
-
-  obtain ⟨μ, hμ⟩ := lemma3 h8
+    simp [proj, ←(hΩ x0).2 x hx02, (hΩ x0).2 y (Set.EqOn.trans hx02 (Set.EqOn.mono (h8 x0 hx01) h))]
+  obtain ⟨μ, hμ⟩ := exists_local_map h9
   exists μ
   apply (cellular_automata_iff h6 μ).mpr
-  apply And.intro
-  exact h2
-  intro x
-  exact hμ x
+  exact ⟨h2, hμ⟩
 
 -- theorem 1.8.1
 theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A]
