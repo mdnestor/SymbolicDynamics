@@ -196,11 +196,35 @@ lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {�
 -- suppose for all x,y ∈ A^G if x|S = y|S then F(x) = F(y)
 -- then there is a unique map f: A^S → A
 
+--
 
-lemma lemma3 {φ: (G → A) → A} {S: Set G}
+
+theorem Set.eqOn_trans
+  {X Y: Type} {S: Set X} {f g h: X → Y}
+  (h1: Set.EqOn f g S) (h2: Set.EqOn g h S): Set.EqOn f h S := by
+  intro _ hx
+  exact Eq.trans (h1 hx) (h2 hx)
+
+lemma set_EqOn_eqv {G A: Type} {φ: (G → A) → A} {S: Set G}:
+  Equivalence (fun x y: G → A => Set.EqOn x y S):= by
+  constructor
+  intro x
+  exact Set.eqOn_refl x S
+  intro
+  exact Set.eqOn_comm.mp
+  intro _ _ _ h1 h2
+  exact Set.eqOn_trans h1 h2
+
+lemma lemma3 {G A: Type} {φ: (G → A) → A} {S: Set G}
   (h: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y):
   ∃ μ: (S → A) → A, ∀ x: G → A, φ x = μ (Set.restrict S x) := by
   sorry
+
+#check Quot.lift
+example {F: (X → Y) → Y} {S: Set X}
+  (h: ∀ u v: X → Y, Set.EqOn u v S → F x = F y):
+  ∃ f: (S → Y) → Y, ∀ u: X → Y, F u = f (Set.restrict S u) := by
+  let
 
 theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
   (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
@@ -258,7 +282,7 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
     have h11: y ∈ neighbors x (Ω x0) := Set.EqOn.mono h10 h
     have h12: y ∈ neighbors x0 (Ω x0) := Set.EqOn.trans hx02 h11
     have h13: τ x 1 = τ y 1 := by
-      rw[←(hΩ x0).2 x hx02, (hΩ x0).2 y h12]
+      rw [←(hΩ x0).2 x hx02, (hΩ x0).2 y h12]
     exact h13
 
   obtain ⟨μ, hμ⟩ := lemma3 h8
