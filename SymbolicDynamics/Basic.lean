@@ -104,9 +104,6 @@ theorem memory_set_eq {G A: Type} [Mul G]
   assumption
   exists g'
 
-lemma setMul_finite {G: Type} [Mul G] {S1 S2: Set G} (h1: Finite S1) (h2: Finite S2):
-  Finite (setMul S1 S2) := sorry
-
 lemma leftMul_one {G A: Type} {x: G → A} [Monoid G]: x ∘ leftMul 1 = x := by
   ext
   simp [leftMul]
@@ -143,7 +140,9 @@ theorem sliding_block_compose {G A: Type} [Mul G]
     obtain ⟨hS1, μ1, hμ1⟩ := h1
     obtain ⟨hS2, μ2, hμ2⟩ := h2
     constructor
-    exact setMul_finite hS1 hS2
+    apply Set.Finite.image2
+    exact hS1
+    exact hS2
     sorry
 
 -- proposition 1.4.8
@@ -156,7 +155,10 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
   let ΩS := setMul Ω S
   exists neighbors x ΩS
   apply And.intro
-  exact neighbors_is_nhd x ΩS (setMul_finite hΩ1 hS1)
+  apply neighbors_is_nhd x ΩS
+  apply Set.Finite.image2
+  exact hΩ1
+  exact hS1
   have h1: Set.image τ (neighbors x ΩS) ⊆ neighbors (τ x) Ω := by
     intro τy hτy
     simp [neighbors] at hτy
@@ -201,6 +203,8 @@ lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {�
 -- and S is a subset of F
 -- suppose for all x,y ∈ A^G if x|S = y|S then F(x) = F(y)
 -- then there is a unique map f: A^S → A
+
+
 lemma lemma3 {φ: (G → A) → A} {S: Set G}
   (h: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y):
   ∃ μ: (S → A) → A, ∀ x: G → A, φ x = μ (Set.restrict S x) := by
