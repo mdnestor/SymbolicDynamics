@@ -27,23 +27,31 @@ import Mathlib.Topology.Separation
 import Mathlib.Topology.Connected.TotallyDisconnected
 
 import SymbolicDynamics.ProdiscreteTopology
-import SymbolicDynamics.Shift
 
--- definition of sliding block code
+-- definition of sliding block code based on definition 1.4.1
+
 def local_map {G A B: Type} [Mul G] {S: Set G} (τ: (G → A) → G → B) (μ: (S → A) → B): Prop :=
   ∀ x: G → A, ∀ g: G, τ x g = μ (Set.restrict S (x ∘ (leftMul g)))
 
 def memory_set {G A B: Type} [Mul G] (τ: (G → A) → G → B) (S: Set G): Prop :=
   Finite S ∧ ∃ μ: (S → A) → B, local_map τ μ
 
+def memory_finset {G A B: Type} [Mul G] (τ: (G → A) → G → B) (S: Finset G): Prop :=
+  ∃ μ: (S → A) → B, local_map τ μ
+
+def shift_space {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] (S: Set (M → A)): Prop :=
+  IsClosed S ∧ ∀ x ∈ S, ∀ g: M, x ∘ leftMul g ∈ S
+
+def window {A M: Type} (Λ: Set (M → A)) (N: Set M): Set (N → A) :=
+  {w: N → A | ∃ x ∈ Λ, w = Set.restrict N x}
+
 def sliding_block_code {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :=
   ∃ S: Set M, memory_set Φ S
 
--- a cellular automata is a sliding block code whose input/output type are the same
-def cellular_automata {A M: Type} [Mul M] (Φ: (M → A) → M → A): Prop :=
-  sliding_block_code Φ
+def sliding_block_code_fin {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :=
+  ∃ S: Finset M, memory_finset Φ S
 
-def sliding_block_code_v2 {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: subshift Λ) (Φ: Λ → M → B): Prop :=
+def sliding_block_code_correct {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: shift_space Λ) (Φ: Λ → M → B): Prop :=
   sorry
 
 def equivariant {G A B: Type} [Mul G] (τ: (G → A) → G → B): Prop :=
@@ -56,18 +64,6 @@ def equivariant_compose {G A B C: Type} [Mul G]
   simp [equivariant]
   intros
   rw [h1, h2]
-
-theorem shift_uniform_continuous {A M: Type} [Mul M] [UniformSpace A] (h: uniformity A = Filter.principal idRel):
-  ∀ g: M, UniformContinuous (fun x: M → A => x ∘ leftMul g) := by
-    sorry
-
-theorem subshift_preimage {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] [Finite A]
-  {τ: (M → A) → M → B} {U: Set (M → A)} (h1: sliding_block_code τ) (h2: subshift U): subshift (Set.image τ U) := by
-  sorry
-
-theorem subshift_image {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
-  {τ: (M → A) → M → B} {V: Set (M → B)} (h1: sliding_block_code τ) (h2: subshift V): subshift (Set.preimage τ V) := by
-  sorry
 
 lemma leftMul_comp {G: Type} [Semigroup G] {g g': G}: leftMul g ∘ leftMul g' = leftMul (g * g') := by
   ext
@@ -108,9 +104,6 @@ theorem memory_set_eq {G A: Type} [Mul G]
   assumption
   exists g'
 
-lemma setMul_finite {G: Type} [Mul G] {S1 S2: Set G} (h1: Finite S1) (h2: Finite S2):
-  Finite (setMul S1 S2) := sorry
-
 lemma leftMul_one {G A: Type} {x: G → A} [Monoid G]: x ∘ leftMul 1 = x := by
   ext
   simp [leftMul]
@@ -122,7 +115,7 @@ lemma eval_at_one {G A: Type} [Group G] {τ: (G → A) → G → A}
 
 -- proposition 1.4.6
 theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
-  {τ: (G → A) → G → B} {S: Set G} (hS: Finite S) (μ: (S → A) → B):
+  {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
   local_map τ μ ↔ equivariant τ ∧ ∀ x: G → A, τ x 1 = μ (Set.restrict S x) := by
   constructor
   . intro h
@@ -147,20 +140,25 @@ theorem sliding_block_compose {G A: Type} [Mul G]
     obtain ⟨hS1, μ1, hμ1⟩ := h1
     obtain ⟨hS2, μ2, hμ2⟩ := h2
     constructor
-    exact setMul_finite hS1 hS2
+    apply Set.Finite.image2
+    exact hS1
+    exact hS2
     sorry
 
 -- proposition 1.4.8
 theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
   {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
-  apply continuous_of_neighborhood_continuous
+  apply continuous_of_neighborhood_continuous.mpr
   intro x W hW
   obtain ⟨Ω, hΩ1, hΩ2⟩ := neighbor_lemma hW
   let ⟨S, hS1, hS2⟩ := h
   let ΩS := setMul Ω S
   exists neighbors x ΩS
   apply And.intro
-  exact neighbors_is_nhd x ΩS (setMul_finite hΩ1 hS1)
+  apply neighbors_is_nhd x ΩS
+  apply Set.Finite.image2
+  exact hΩ1
+  exact hS1
   have h1: Set.image τ (neighbors x ΩS) ⊆ neighbors (τ x) Ω := by
     intro τy hτy
     simp [neighbors] at hτy
@@ -169,16 +167,14 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
     exact memory_set_eq ⟨hS1, hS2⟩ hy.1
   exact le_trans h1 hΩ2
 
-
 -- curtis hedlund theorem reverse direction
-
-lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {τ: (G → A) → G → A} (h1: Continuous τ):
+theorem exists_neighbor_eqAt_one {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {τ: (G → A) → G → A} (h1: Continuous τ):
   ∀ x: G → A, ∃ Ω: Set G, Finite Ω ∧ ∀ y: G → A, y ∈ neighbors x Ω → τ x 1 = τ y 1 := by
     let φ := proj 1 ∘ τ
     have hφ : Continuous φ := Continuous.comp (continuous_apply 1) h1
     intro x
     have hU: {φ x} ∈ nhds (φ x) := by simp
-    obtain ⟨V, hV1, hV2⟩ := continuous_of_neighborhood_continuous2 hφ x {φ x} hU
+    obtain ⟨V, hV1, hV2⟩ := continuous_of_neighborhood_continuous.mp hφ x {φ x} hU
     have h4 := (neighbors_forms_neighborhood_base x).2
     specialize h4 V hV1
     obtain ⟨U, hU1, hU2⟩ := h4
@@ -189,69 +185,93 @@ lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {�
     exact hΩ1
     intro y hy
     rw [← hΩ2] at hy
-    have hy2 := hU2 hy
-    have hy3 := hV2
-    specialize hy3 y
-    have hy4 := hy3 hy2
     calc
       τ x 1 = φ x := by rfl
-          _ = φ y := by rw [Eq.symm hy4]
+          _ = φ y := by rw [Eq.symm ((hV2 y) (hU2 hy))]
           _ = τ y 1 := by rfl
+
+theorem Set.eqOn_trans
+  {X Y: Type} {S: Set X} {f g h: X → Y}
+  (h1: Set.EqOn f g S) (h2: Set.EqOn g h S): Set.EqOn f h S := by
+  intro _ hx
+  exact Eq.trans (h1 hx) (h2 hx)
+
+lemma set_EqOn_eqv {X Y: Type} (S: Set X):
+  Equivalence (fun x y: X → Y => Set.EqOn x y S):= by
+  constructor
+  intro x
+  exact Set.eqOn_refl x S
+  intro
+  exact Set.eqOn_comm.mp
+  intro _ _ _ h1 h2
+  exact Set.eqOn_trans h1 h2
+
+def set_EqOn_setoid {X: Type} (S: Set X) (Y: Type):
+  Setoid (X → Y) := {
+    r := fun x y: X → Y => Set.EqOn x y S
+    iseqv := set_EqOn_eqv S
+  }
+
+def set_EqOn_quotient {X Y: Type} (S: Set X) :=
+  Quotient (set_EqOn_setoid S Y)
+
+theorem exists_local_map {G A: Type} {φ: (G → A) → A} {S: Set G}
+  (h: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y):
+  ∃ μ: (S → A) → A, ∀ x: G → A, φ x = μ (Set.restrict S x) := by
+  have := set_EqOn_setoid S A
+  have h1: ∀ (x y : G → A), x ≈ y → φ x = φ y := sorry
+  let μ := Quotient.lift φ h1
+  -- prove there is bijection between Quotient this and S → Y?
+  sorry
 
 theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
   (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
-
   have h3: ∃ Ω: (G → A) → Set G, ∀ x: G → A, Finite (Ω x) ∧ ∀ y: G → A, y ∈ neighbors x (Ω x) → τ x 1 = τ y 1 := by
-    exists fun x => Classical.choose (lemma2 h1 x)
-    intro x
-    exact Classical.choose_spec (lemma2 h1 x)
-
+    exists fun x => Classical.choose (exists_neighbor_eqAt_one h1 x)
+    exact fun x => Classical.choose_spec (exists_neighbor_eqAt_one h1 x)
   obtain ⟨Ω, hΩ⟩ := h3
-
-  have h4 : ∀ x, Finite (Ω x) := by
-    intro x
-    exact (hΩ x).1
-
-  -- the V x (Ω x) cover the whole space
+  have h4 : ∀ x, Finite (Ω x) := fun x => (hΩ x).1
   have h5 : Set.univ ⊆ ⋃ x, neighbors x (Ω x) := by
     intro x _
     simp
     exists x
     apply x_in_neighbors x
-
-  -- extract a finite subcover
   obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => neighbors x (Ω x)) (fun x => neighbors_open x (Ω x) (h4 x)) h5
-
+  simp at hF
   let S := Set.sUnion (Set.image Ω F)
   exists S
-
   have h6 : Finite S := by
     apply Set.Finite.sUnion
     exact Set.Finite.image Ω (by simp)
     intro _ hΩx
-    simp [Set.image] at hΩx
+    rw [Set.image] at hΩx
     obtain ⟨x, hx⟩ := hΩx
     rw [←hx.2]
     exact h4 x
-
-  apply And.intro
+  constructor
   exact h6
-
-  --let φ := proj 1 ∘ τ
-  -- idea: use a quotient map
-
-  let μ : (S → A) → A := sorry
+  have h7: ∀ x: G → A, ∃ x0 ∈ F, x ∈ neighbors x0 (Ω x0) := by
+    apply Set.exists_set_mem_of_union_eq_top
+    apply Set.eq_univ_of_univ_subset
+    simp
+    exact hF
+  have h8: ∀ x ∈ F, Ω x ⊆ S := by
+    intro x _
+    apply Set.subset_sUnion_of_mem
+    exists x
+  have h9: ∀ x y: G → A, Set.EqOn x y S → (proj 1) (τ x) = (proj 1) (τ y) := by
+    intro x y h
+    obtain ⟨x0, hx01, hx02⟩ := h7 x
+    simp [proj, ←(hΩ x0).2 x hx02, (hΩ x0).2 y (Set.EqOn.trans hx02 (Set.EqOn.mono (h8 x0 hx01) h))]
+  obtain ⟨μ, hμ⟩ := exists_local_map h9
   exists μ
   apply (cellular_automata_iff h6 μ).mpr
-  apply And.intro
-  exact h2
-  intro x
-
-  sorry
+  exact ⟨h2, hμ⟩
 
 -- theorem 1.8.1
 theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A]
-  (τ: (G → A) → G → A): sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
+  (τ: (G → A) → G → A):
+  sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
   apply Iff.intro
   exact fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩
   exact fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2
