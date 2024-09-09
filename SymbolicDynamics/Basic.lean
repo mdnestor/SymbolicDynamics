@@ -65,15 +65,6 @@ def equivariant_compose {G A B C: Type} [Mul G]
   intros
   rw [h1, h2]
 
--- the shift map is continuous
-theorem shift_continuous {A M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]:
-  ∀ g: M, Continuous (fun x: M → A => x ∘ leftMul g) := by
-    sorry
-
-theorem shift_uniform_continuous {A M: Type} [Mul M] [UniformSpace A] (h: uniformity A = Filter.principal idRel):
-  ∀ g: M, UniformContinuous (fun x: M → A => x ∘ leftMul g) := by
-    sorry
-
 lemma leftMul_comp {G: Type} [Semigroup G] {g g': G}: leftMul g ∘ leftMul g' = leftMul (g * g') := by
   ext
   simp [leftMul, mul_assoc]
@@ -206,6 +197,15 @@ lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {�
           _ = φ y := by rw [Eq.symm hy4]
           _ = τ y 1 := by rfl
 
+-- lemma: suppose F: A^G → A
+-- and S is a subset of F
+-- suppose for all x,y ∈ A^G if x|S = y|S then F(x) = F(y)
+-- then there is a unique map f: A^S → A
+lemma lemma3 {φ: (G → A) → A} {S: Set G}
+  (h: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y):
+  ∃ μ: (S → A) → A, ∀ x: G → A, φ x = μ (Set.restrict S x) := by
+  sorry
+
 theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
   (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
 
@@ -246,27 +246,41 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
   exact h6
 
   let φ := proj 1 ∘ τ
-  let r: (G → A) → (G → A) → Prop := fun y z: (G → A) => Set.EqOn y z S
-  have hr: ∀ y z: G → A, r y z → φ y = φ z := sorry
-  #check Quot.lift φ hr
-  -- maybe define bijectionve between Quot r and S → A
-  have bij: (S → A) → Quot r := sorry
-  #check Quot.mk
 
-  let μ : (S → A) → A := (Quot.lift φ hr) ∘ bij
+  -- let x0 be such that y in V(x0, Ω x0)
+  have h7: ∀ x: G → A, ∃ x0 ∈ F, x ∈ neighbors x0 (Ω x0) := by
+    apply Set.exists_set_mem_of_union_eq_top
+    apply Set.eq_univ_of_univ_subset
+    -- this is almost h5
+    sorry
+
+  have h8: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y := by
+    intro x y h
+    obtain ⟨x0, hx01, hx02⟩ := h7 x
+    have h10: Ω x0 ⊆ S := by
+      apply Set.subset_sUnion_of_mem
+      exists x0
+    have h11: y ∈ neighbors x (Ω x0) := Set.EqOn.mono h10 h
+    have h12: y ∈ neighbors x0 (Ω x0) := Set.EqOn.trans hx02 h11
+    have h13: τ x 1 = τ y 1 := by
+      rw[←(hΩ x0).2 x hx02, (hΩ x0).2 y h12]
+    exact h13
+
+  obtain ⟨μ, hμ⟩ := lemma3 h8
   exists μ
   apply (cellular_automata_iff h6 μ).mpr
   apply And.intro
   exact h2
   intro x
-
-  sorry
+  exact hμ x
 
 -- theorem 1.8.1
-theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] (τ: (G → A) → G → A): sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
+theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A]
+  (τ: (G → A) → G → A):
+  sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
   apply Iff.intro
   exact fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩
-  exact fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant τ h1 h2
+  exact fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2
 
 theorem uniform_continuous_of_sliding_block_code {G A: Type} [Group G] [UniformSpace A] {τ: (G → A) → G → A} (h: uniformity A = Filter.principal idRel) (h1: sliding_block_code τ): UniformContinuous τ :=
   sorry
