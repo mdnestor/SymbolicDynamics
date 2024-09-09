@@ -191,11 +191,12 @@ theorem open_iff_union_of_finite_intersection_of_cylinders
 
 -- neighborhood definition of continuity
 -- TODO find in mathlib
-lemma continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y} (h: ∀ x: X, ∀ V ∈ nhds (f x), ∃ U ∈ nhds x, Set.image f U ⊆ V): Continuous f := by
-  sorry
+lemma continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y}:
+  Continuous f ↔ ∀ x: X, ∀ V ∈ nhds (f x), ∃ U ∈ nhds x, Set.image f U ⊆ V := sorry
 
-lemma continuous_of_neighborhood_continuous2 {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y} (h: Continuous f): ∀ x: X, ∀ V ∈ nhds (f x), ∃ U ∈ nhds x, Set.image f U ⊆ V := by
-  sorry
+
+
+
 -- neighbor set (same as V(x, Ω), eq 1.3)
 -- given x: G → A and Ω ⊆ G, the Ω-neighbors of x will be
 -- all those y which agree with x on Ω

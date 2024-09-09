@@ -148,7 +148,7 @@ theorem sliding_block_compose {G A: Type} [Mul G]
 -- proposition 1.4.8
 theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
   {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
-  apply continuous_of_neighborhood_continuous
+  apply continuous_of_neighborhood_continuous.mpr
   intro x W hW
   obtain ⟨Ω, hΩ1, hΩ2⟩ := neighbor_lemma hW
   let ⟨S, hS1, hS2⟩ := h
@@ -169,17 +169,13 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
 
 
 -- curtis hedlund theorem reverse direction
-
-def funcQuot {X Y: Type} {S: Set X} (u v: X → Y) (h: Set.EqOn u v S): S → Y := sorry
-
-
 lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {τ: (G → A) → G → A} (h1: Continuous τ):
   ∀ x: G → A, ∃ Ω: Set G, Finite Ω ∧ ∀ y: G → A, y ∈ neighbors x Ω → τ x 1 = τ y 1 := by
     let φ := proj 1 ∘ τ
     have hφ : Continuous φ := Continuous.comp (continuous_apply 1) h1
     intro x
     have hU: {φ x} ∈ nhds (φ x) := by simp
-    obtain ⟨V, hV1, hV2⟩ := continuous_of_neighborhood_continuous2 hφ x {φ x} hU
+    obtain ⟨V, hV1, hV2⟩ := continuous_of_neighborhood_continuous.mp hφ x {φ x} hU
     have h4 := (neighbors_forms_neighborhood_base x).2
     specialize h4 V hV1
     obtain ⟨U, hU1, hU2⟩ := h4
@@ -190,13 +186,9 @@ lemma lemma2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {�
     exact hΩ1
     intro y hy
     rw [← hΩ2] at hy
-    have hy2 := hU2 hy
-    have hy3 := hV2
-    specialize hy3 y
-    have hy4 := hy3 hy2
     calc
       τ x 1 = φ x := by rfl
-          _ = φ y := by rw [Eq.symm hy4]
+          _ = φ y := by rw [Eq.symm ((hV2 y) (hU2 hy))]
           _ = τ y 1 := by rfl
 
 -- lemma: suppose F: A^G → A
@@ -233,7 +225,7 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
 
   -- extract a finite subcover
   obtain ⟨F, hF⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun x => neighbors x (Ω x)) (fun x => neighbors_open x (Ω x) (h4 x)) h5
-
+  simp at hF
   let S := Set.sUnion (Set.image Ω F)
   exists S
 
@@ -250,13 +242,12 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
   exact h6
 
   let φ := proj 1 ∘ τ
-
   -- let x0 be such that y in V(x0, Ω x0)
   have h7: ∀ x: G → A, ∃ x0 ∈ F, x ∈ neighbors x0 (Ω x0) := by
     apply Set.exists_set_mem_of_union_eq_top
     apply Set.eq_univ_of_univ_subset
-    -- this is almost h5
-    sorry
+    simp
+    exact hF
 
   have h8: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y := by
     intro x y h
