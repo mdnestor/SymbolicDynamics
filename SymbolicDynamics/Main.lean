@@ -51,8 +51,10 @@ def sliding_block_code {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :
 def sliding_block_code_fin {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :=
   ∃ S: Finset M, memory_finset Φ S
 
+/-
 def sliding_block_code_correct {A B M: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A] {Λ: Set (M → A)} (h: shift_space Λ) (Φ: Λ → M → B): Prop :=
   sorry
+-/
 
 def equivariant {G A B: Type} [Mul G] (τ: (G → A) → G → B): Prop :=
   ∀ x: G → A, ∀ g: G, τ (x ∘ leftMul g) = τ x ∘ leftMul g
@@ -133,6 +135,7 @@ theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [Discre
     rw [←h2 (x ∘ leftMul g), h1]
     simp [leftMul]
 
+/-
 theorem sliding_block_compose {G A: Type} [Mul G]
   {τ1: (G → A) → G → A} {τ2: (G → A) → G → A}
   {S1 S2: Set G} (h1: memory_set τ1 S1) (h2: memory_set τ2 S2):
@@ -144,6 +147,7 @@ theorem sliding_block_compose {G A: Type} [Mul G]
     exact hS1
     exact hS2
     sorry
+-/
 
 -- proposition 1.4.8
 theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
@@ -276,6 +280,7 @@ theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace
   exact fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩
   exact fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2
 
+/-
 theorem uniform_continuous_of_sliding_block_code {G A: Type} [Group G] [UniformSpace A] {τ: (G → A) → G → A} (h: uniformity A = Filter.principal idRel) (h1: sliding_block_code τ): UniformContinuous τ :=
   sorry
 
@@ -287,3 +292,4 @@ theorem curtis_hedlund_lyndon_uniform {G A: Type} [Group G] [UniformSpace A] (h:
   apply Iff.intro
   exact fun h1 => ⟨uniform_continuous_of_sliding_block_code h h1, sliding_block_equivariant h1⟩
   exact fun ⟨h1, h2⟩ => sliding_block_code_of_uniform_continuous_and_equivariant h h1 h2
+-/

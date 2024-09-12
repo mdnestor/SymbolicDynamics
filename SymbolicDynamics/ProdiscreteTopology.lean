@@ -55,9 +55,11 @@ theorem prodiscrete_cylinder_open {G A: Type} [TopologicalSpace A] [DiscreteTopo
   apply cylinder_open
   simp
 
+/-
 theorem cylinder_closed {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A):
   IsClosed (cylinder g {a}) := by
   sorry
+-/
 
 /-
 theorem cylinder_clopen {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (a: A): IsClopen (cylinder g {a}) :=
@@ -190,12 +192,24 @@ theorem open_iff_union_of_finite_intersection_of_cylinders
   ⟩
 
 -- neighborhood definition of continuity
--- TODO find in mathlib
-lemma continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y}:
-  Continuous f ↔ ∀ x: X, ∀ V ∈ nhds (f x), ∃ U ∈ nhds x, Set.image f U ⊆ V := sorry
-
-
-
+theorem continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y}:
+  Continuous f ↔ (∀ x: X, ∀ V ∈ nhds (f x), ∃ U ∈ nhds x, Set.image f U ⊆ V) := by
+  constructor
+  intro h x V hV
+  exists Set.preimage f V
+  constructor
+  rw [continuous_iff_continuousAt] at h
+  specialize h x
+  exact h hV
+  simp
+  intro h
+  apply continuous_iff_continuousAt.mpr
+  intro x V hV
+  specialize h x V hV
+  obtain ⟨U, hU1, hU2⟩ := h
+  simp
+  simp at hU2
+  exact Filter.mem_of_superset hU1 hU2
 
 -- neighbor set (same as V(x, Ω), eq 1.3)
 -- given x: G → A and Ω ⊆ G, the Ω-neighbors of x will be
