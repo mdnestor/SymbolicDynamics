@@ -199,8 +199,8 @@ theorem exists_neighbor_eqAt_one {G A: Type} [TopologicalSpace A] [DiscreteTopol
 
 theorem exists_extension {X Y: Type} {S: Set X} [Nonempty Y]:
   ∀ f: S → Y, ∃ F: X → Y, Set.restrict S F = f := by
+  classical -- ensures decidable membership of S
   intro f
-  classical
   exists fun x => if h: x ∈ S then f ⟨x, h⟩ else Classical.ofNonempty
   simp
 
