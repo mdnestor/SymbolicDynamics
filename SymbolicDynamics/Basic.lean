@@ -16,6 +16,9 @@ import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
 import Mathlib.Data.Set.Pointwise.Basic
 import Mathlib.Data.Set.Finite
+import Mathlib.Data.Fintype.Card
+
+import Mathlib.Data.Fintype.Basic
 import Mathlib.Logic.Function.Defs
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Topology.Defs.Basic
@@ -133,6 +136,7 @@ theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [Discre
     rw [←h2 (x ∘ leftMul g), h1]
     simp [leftMul]
 
+/-
 theorem sliding_block_compose {G A: Type} [Mul G]
   {τ1: (G → A) → G → A} {τ2: (G → A) → G → A}
   {S1 S2: Set G} (h1: memory_set τ1 S1) (h2: memory_set τ2 S2):
@@ -144,6 +148,7 @@ theorem sliding_block_compose {G A: Type} [Mul G]
     exact hS1
     exact hS2
     sorry
+-/
 
 -- proposition 1.4.8
 theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
@@ -190,58 +195,29 @@ theorem exists_neighbor_eqAt_one {G A: Type} [TopologicalSpace A] [DiscreteTopol
           _ = φ y := by rw [Eq.symm ((hV2 y) (hU2 hy))]
           _ = τ y 1 := by rfl
 
-theorem Set.eqOn_trans
-  {X Y: Type} {S: Set X} {f g h: X → Y}
-  (h1: Set.EqOn f g S) (h2: Set.EqOn g h S): Set.EqOn f h S := by
-  intro _ hx
-  exact Eq.trans (h1 hx) (h2 hx)
-
-lemma set_EqOn_eqv {X Y: Type} (S: Set X):
-  Equivalence (fun x y: X → Y => Set.EqOn x y S):= by
-  constructor
-  intro x
-  exact Set.eqOn_refl x S
-  intro
-  exact Set.eqOn_comm.mp
-  intro _ _ _ h1 h2
-  exact Set.eqOn_trans h1 h2
-
-def set_EqOn_setoid {X: Type} (S: Set X) (Y: Type):
-  Setoid (X → Y) := {
-    r := fun x y: X → Y => Set.EqOn x y S
-    iseqv := set_EqOn_eqv S
-  }
-
-def set_EqOn_quotient {X Y: Type} (S: Set X) :=
-  Quotient (set_EqOn_setoid S Y)
-
-theorem exists_local_map {G A: Type} {φ: (G → A) → A} {S: Set G}
-  (h: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y) (hA: Nonempty A) [∀ g: G, Decidable (g ∈ S)]:
-  ∃ μ: (S → A) → A, ∀ x: G → A, φ x = μ (Set.restrict S x) := by
-  have s := set_EqOn_setoid S A
-  have h1: ∀ (x y : G → A), x ≈ y → φ x = φ y := by
-    intro x y hxy
-    apply h x y
-    sorry -- exact hxy
-  -- prove there is bijection between Quotient this and S → Y?
-  let g: Quotient s → (S → A) := Set.restrict S ∘ Quot.out
-  have hg: Function.Bijective g := by
-    constructor
-    intro x y hxy
-    -- if g x = g y then x = y
-    sorry
-    intro y
-    let a0 := Classical.choice hA
-    exists Quotient.mk s (fun g' => if hg': g' ∈ S then y ⟨ g', hg' ⟩ else a0)
-    ext s'
-    sorry
-  obtain ⟨ginv, hginv⟩ := Function.bijective_iff_has_inverse.mp hg
-  exists (Quotient.lift φ h1) ∘ ginv
-  intro x
+theorem exists_extension {X Y: Type} {S: Set X} [Nonempty Y]:
+  ∀ f: S → Y, ∃ F: X → Y, Set.restrict S F = f := by
+  intro f
+  classical
+  exists fun x => if h: x ∈ S then f ⟨x, h⟩ else Classical.ofNonempty
   simp
-  sorry
 
-theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
+theorem exists_extension_map {X: Type} (S: Set X) (Y: Type) [Nonempty Y]:
+  ∃ F: (S → Y) → (X → Y), ∀ u: S → Y, Set.restrict S (F u) = u := by
+  exists fun u => Classical.choose (exists_extension u)
+  intro u
+  exact Classical.choose_spec (exists_extension u)
+
+theorem exists_local_map {X Y Z: Type} {F: (X → Y) → Z} {S: Set X} [Nonempty Y]
+  (h: ∀ u v: X → Y, Set.EqOn u v S → F u = F v):
+  ∃ F': (S → Y) → Z, ∀ u: X → Y, F u = F' (Set.restrict S u) := by
+  obtain ⟨G, hG⟩ := exists_extension_map S Y
+  exists F ∘ G
+  intro u
+  apply h
+  rw [←Set.restrict_eq_restrict_iff, hG (S.restrict u)]
+
+theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
   (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
   have h3: ∃ Ω: (G → A) → Set G, ∀ x: G → A, Finite (Ω x) ∧ ∀ y: G → A, y ∈ neighbors x (Ω x) → τ x 1 = τ y 1 := by
     exists fun x => Classical.choose (exists_neighbor_eqAt_one h1 x)
@@ -286,7 +262,7 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
   exact ⟨h2, hμ⟩
 
 -- theorem 1.8.1
-theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A]
+theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A]
   (τ: (G → A) → G → A):
   sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
   apply Iff.intro

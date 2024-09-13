@@ -268,6 +268,25 @@ theorem neighbors_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
 def neighborhood_base {X: Type} [TopologicalSpace X] (x: X) (B: Set (Set X)): Prop :=
   B ⊆ (nhds x).sets ∧ ∀ V ∈ nhds x, ∃ U ∈ B, U ⊆ V
 
+#check Set.iInter
+def finite_inter_basic {X: Type} (B: Set (Set X)): Set (Set X) :=
+  {U: Set X | ∃ I: Type, ∃ f: I → Set X, Finite I ∧ Set.iInter f = U ∧ (∀ i: I, f i ∈ B)}
+
+def union_finite_inter_basic {X: Type} (B: Set (Set X)): Set (Set X) :=
+  {U: Set X | ∃ I: Type, ∃ f: I → Set X, Set.iUnion f = U ∧ (∀ i: I, f i ∈ finite_inter_basic B)}
+
+theorem union_finite_inter_basic_generated {X: Type} (B: Set (Set X)):
+  (TopologicalSpace.generateFrom B).IsOpen = union_finite_inter_basic B := sorry
+
+-- if a topology is generate from B then every open set
+-- is a union of finite intersections of sets from B
+
+/-
+def open_generate {X: Type} (B: Set (Set X)) (T: TopologicalSpace X)
+  (h: T = TopologicalSpace.generateFrom B) (U: Set X) (hU: IsOpen U):
+  ∃ I J:
+-/
+
 -- if a topology is generated from B then every open set contains a basic subset
 theorem open_basic_subset {X: Type} [T: TopologicalSpace X] {B: Set (Set X)}
   (h: T = TopologicalSpace.generateFrom B) {U: Set X} (hU: IsOpen U):
