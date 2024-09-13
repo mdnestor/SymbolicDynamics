@@ -148,6 +148,7 @@ theorem pi_generateFrom_cylinders {X I: Type} [TopologicalSpace X]:
   Pi.topologicalSpace = TopologicalSpace.generateFrom (cylinders X I) :=
   le_antisymm pi_le_generateFrom_cylinders generateFrom_cylinders_le_pi
 
+/-
 -- a finite intersection of arbitrary cylinders is open in the discrete topology
 theorem finite_intersection_of_cylinders_open {A G: Type}
   [TopologicalSpace A] [DiscreteTopology A] {U: Set (G → A)}
@@ -190,6 +191,7 @@ theorem open_iff_union_of_finite_intersection_of_cylinders
     union_of_finite_intersection_of_cylinders_of_open,
     open_of_union_of_finite_intersection_of_cylinders
   ⟩
+-/
 
 -- neighborhood definition of continuity
 theorem continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y}:
@@ -266,6 +268,12 @@ theorem neighbors_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
 def neighborhood_base {X: Type} [TopologicalSpace X] (x: X) (B: Set (Set X)): Prop :=
   B ⊆ (nhds x).sets ∧ ∀ V ∈ nhds x, ∃ U ∈ B, U ⊆ V
 
+-- if a topology is generated from B then every open set contains a basic subset
+theorem open_basic_subset {X: Type} [T: TopologicalSpace X] {B: Set (Set X)}
+  (h: T = TopologicalSpace.generateFrom B) {U: Set X} (hU: IsOpen U):
+  ∃ b ∈ B, b ⊆ U := by
+  sorry
+
 theorem neighbors_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A):
   neighborhood_base x {U: Set (G → A) | ∃ Ω: Set G, Finite Ω ∧ U = neighbors x Ω } := by
   constructor
@@ -277,8 +285,23 @@ theorem neighbors_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [Disc
 
   . intro V hV
     simp
-    -- ⊢ ∃ U, (∃ Ω, Finite ↑Ω ∧ U = _root_.V x Ω) ∧ U ⊆ V
+    -- since V is a neighborhood there exists a basic open set U ⊆ V containing x
+    -- and every basic open set is a finite intersection of the generating sets
+    have h1: ∀ x' ∈ (Set.singleton x), V ∈ nhds x' := sorry
+    obtain ⟨U, hU1, hU2, hU3⟩ := exists_open_set_nhds h1
+    -- every open set contains a basic set?
+    obtain ⟨b, hb1, hb2⟩ := open_basic_subset pi_generateFrom_cylinders hU2
+    exists b
+    simp at hb1
+    obtain ⟨ i, W⟩ := hb1
+    constructor
+    exists {i}
+    constructor
     sorry
+    rw [neighbors_cylinder_eq]
+    simp
+    sorry
+    exact le_trans hb2 hU3
 
 -- "Let x: G → A and let W be a neighborhood of τ(x). Then we can find a finite subset Ω ⊆ G such that V(τ(x), Ω) ⊆ W" why..?
 theorem neighbor_lemma {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
