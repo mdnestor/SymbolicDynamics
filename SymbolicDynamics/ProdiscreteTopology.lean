@@ -22,17 +22,17 @@ def prodiscrete_space (G A: Type) [TopologicalSpace A] [DiscreteTopology A]: Top
 
 -- it is both T2 (Hausdorff) and totally disconnected
 theorem prodiscrete_T2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  T2Space (G → A) := by
-  apply Pi.t2Space
+  T2Space (G → A) :=
+  Pi.t2Space
 
 theorem prodiscrete_totally_disconnected {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  TotallyDisconnectedSpace (G → A) := by
-  apply Pi.totallyDisconnectedSpace
+  TotallyDisconnectedSpace (G → A) :=
+  Pi.totallyDisconnectedSpace
 
 -- if A is finite then A^G is compact
 theorem prodiscrete_compact {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
-  CompactSpace (G → A) := by
-  apply Pi.compactSpace
+  CompactSpace (G → A) :=
+  Pi.compactSpace
 
 -- projection map
 def proj {G A: Type} (g: G): (G → A) → A :=
@@ -53,8 +53,7 @@ theorem cylinder_open {G A: Type} [TopologicalSpace A] (g: G) {U: Set A} (h: IsO
 -- every cylinder in the prodiscrete topology is open
 theorem prodiscrete_cylinder_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
   (g: G) (U: Set A): IsOpen (cylinder g U) := by
-  apply cylinder_open
-  simp
+  simp [cylinder_open]
 
 theorem cylinder_subset {G A: Type} (g: G) {U1: Set A} {U2: Set A} (h: U1 ⊆ U2):
   cylinder g U1 ⊆ cylinder g U2 := by
@@ -70,10 +69,6 @@ theorem cylinder_closed {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g
 theorem cylinder_clopen {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (U: Set A): IsClopen (cylinder g U) :=
   ⟨cylinder_closed g U, cylinder_open g U⟩
 -/
-
-def finite_intersection_of_cylinders {A G: Type} (U: Set (G → A)): Prop :=
-  ∃ I: Type, ∃ g: I → G, ∃ a: I → Set A,
-  Finite I ∧ U = Set.sInter (Set.image (fun i => cylinder (g i) (a i)) Set.univ)
 
 -- the set of cylinders
 @[simp]
@@ -217,27 +212,6 @@ theorem neighbor_singleton_subset_cylinder {X Y: Type} {x: X} {u: X → Y} {U: S
   simp
   exact cylinder_subset x (cylinder_imply_singleton_mem h)
 
-/-
-Proof idea:
-
-1. show for all x and Ω finite, V(x,Ω) ∈ nhds x
-
-2. show for every neighborhood N of x, there exists a finite set Ω such that V(x, Ω) ⊆ N
-
--- every neighborhod of x contains a basic open set B containing x
--- every basic open set is a finite intersection of generating sets
--- generating sets are cylinders so we have x ∈ B = ∩_{i=1}^{n} C(g_i, U_i) where each U_i is open
--- let Ω := {g_i | i = 1, ..., n}
--- note that x ∈ C(g_i, U_i) for all i
--- from `cylinder_imply_singleton_mem` it follows that {x g_i} ⊆ U_i
--- from `cylinder_subset` it follows that C(g_i, {x g_i}) ⊆ C(g_i, U_i)
--- then:
--- V(x, Ω) = ∩_{i=1}^{n} C(g_i, x g_i)      by `neighbors_cylinder_eq`
-           ⊆ ∩_{i=1}^{n} C(g_i, U_i)        by `cylinder_subset`
-           = B
-           ⊆ N
--/
-
 theorem lemma0 {X Y Z: Type} {f: X → Y → Z} {S: Set Z}
   (h2: S ⊆ {z | ∃ x y, z = f x y}):
   ∃ p: S → X × Y, ∀ z: S, f (p z).1 (p z).2 = z := by
@@ -267,50 +241,63 @@ theorem lemma1 {X Y Z: Type} {f: X → Y → Z} {S: Set Z}
 
 theorem lemma2 {A B C: Type} {f: A → B → Set C} {X: Set (Set C)} (h1: Finite X) (h2: X ⊆ {C | ∃ x y, C = f x y}):
   ∃ p: Set (A × B), p.Finite ∧ X = Set.image (fun (x, y) => f x y) p := by
-  -- Step 1: Use choice on h2 to get functions that pick x and y for each C in X
   have h1 : ∃ pick_x : X → A, ∃ pick_y : X → B,
     ∀ c : X, f (pick_x c) (pick_y c) = c := lemma1 h2
   obtain ⟨ pick_x, pick_y, hpick⟩ := h1
-  -- Step 2: Define p as the set of pairs (pick_x C, pick_y C) for C in X
-  -- let p := {pair : A × B | ∃ x: X, pair = (pick_x x, pick_y x)}
-  -- should instead define p as image
-  let p := Set.image (fun x => (pick_x x, pick_y x)) Set.univ
-  exists p
-  -- Step 3: Show that p is finite
+  exists Set.image (fun x => (pick_x x, pick_y x)) Set.univ
   constructor
+  . apply Set.Finite.image
+    apply Set.finite_univ
+  . simp_all
+    ext
+    simp_all
+    apply Iff.intro
+    · intro a
+      constructor
+      · constructor
+        · constructor
+          constructor
+          constructor
+          · constructor
+            · rfl
+            · rfl
+          on_goal 3 => {
+            simp_all
+            rfl
+          }
+          · simp_all
+    · intro a
+      obtain ⟨_, h⟩ := a
+      obtain ⟨_, h⟩ := h
+      obtain ⟨left, right1⟩ := h
+      obtain ⟨_, h⟩ := left
+      obtain ⟨_, h⟩ := h
+      obtain ⟨left, right2⟩ := h
+      subst left right1 right2
+      simp_all only
 
-  -- image of finite is finite
-  apply Set.Finite.image
-  apply Set.finite_univ
-  simp_all only [Subtype.forall, Set.image_univ, p]
-  ext1 x
-  simp_all only [Set.mem_image, Set.mem_range, Subtype.exists, Prod.exists, Prod.mk.injEq]
-  apply Iff.intro
-  · intro a
-    apply Exists.intro
-    · apply Exists.intro
-      · apply And.intro
-        apply Exists.intro
-        apply Exists.intro
-        · apply And.intro
-          · rfl
-          · rfl
-        on_goal 3 => {
-          simp_all only
-          rfl
-        }
-        · simp_all only
-  · intro a
-    obtain ⟨w, h⟩ := a
-    obtain ⟨w_1, h⟩ := h
-    obtain ⟨left, right⟩ := h
-    obtain ⟨w_2, h⟩ := left
-    obtain ⟨w_3, h⟩ := h
-    obtain ⟨left, right_1⟩ := h
-    subst left right right_1
-    simp_all only
+/-
+V(x, Ω) forms a neighborhood basis for x
 
+Proof idea:
 
+1. show for all x and Ω finite, V(x,Ω) ∈ nhds x
+
+2. show for every neighborhood N of x, there exists a finite set Ω such that V(x, Ω) ⊆ N
+
+-- every neighborhod of x contains a basic open set B containing x
+-- every basic open set is a finite intersection of generating sets
+-- generating sets are cylinders so we have x ∈ B = ∩_{i=1}^{n} C(g_i, U_i) where each U_i is open
+-- let Ω := {g_i | i = 1, ..., n}
+-- note that x ∈ C(g_i, U_i) for all i
+-- from `cylinder_imply_singleton_mem` it follows that {x g_i} ⊆ U_i
+-- from `cylinder_subset` it follows that C(g_i, {x g_i}) ⊆ C(g_i, U_i)
+-- then:
+-- V(x, Ω) = ∩_{i=1}^{n} C(g_i, x g_i)      by `neighbors_cylinder_eq`
+           ⊆ ∩_{i=1}^{n} C(g_i, U_i)        by `cylinder_subset`
+           = B
+           ⊆ N
+-/
 theorem neighbors_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A):
   neighborhood_base x {U: Set (G → A) | ∃ Ω: Set G, Finite Ω ∧ U = neighbors x Ω } := by
   constructor
@@ -324,12 +311,8 @@ theorem neighbors_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [Disc
     obtain ⟨B, hB1, hB2, hB3⟩ := (TopologicalSpace.IsTopologicalBasis.mem_nhds_iff h1).mp hV
     obtain ⟨Cs, hCs⟩ := hB1
     simp at hCs
-    -- W is a finite set of cylinders
-    -- so there must be a finite set of g ∈ G and U ⊆ A such that W is their union
-
     have h2: ∃ params: Set (G × Set A), params.Finite ∧ Cs = Set.image (fun (gi, Ui) => cylinder gi Ui) params := lemma2 hCs.1.1 hCs.1.2
     obtain ⟨params, hparams⟩ := h2
-    --simp at hparams
     let Ω := Set.image (fun p => p.1) params
     exists Set.sInter (Set.image (fun g => cylinder g {x g}) Ω)
     simp
@@ -356,7 +339,7 @@ theorem neighbors_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [Disc
                               _ ⊆ V := hB3
 
 -- "Let x: G → A and let W be a neighborhood of τ(x). Then we can find a finite subset Ω ⊆ G such that V(τ(x), Ω) ⊆ W" why..?
-theorem neighbor_lemma {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
+theorem neighbor_lemma {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
   {W: Set (G → A)} {x: G → A} (h2: W ∈ nhds x):
   ∃ Ω: Set G, Finite Ω ∧ neighbors x Ω ⊆ W := by
   have h3 := neighbors_forms_neighborhood_base x

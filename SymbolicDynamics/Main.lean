@@ -9,16 +9,19 @@ References
 -- "Some notes on the classification of shift spaces: Shifts of Finite Type; Sofic Shifts; and Finitely Defined Shifts" by Sobottka (2020) https://arxiv.org/abs/2010.10595
 -- "Symbolic dynamics" on Scholarpedia http://www.scholarpedia.org/article/Symbolic_dynamics
 
-TODO: correct shift space, use Finsets
 -/
 
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
 import Mathlib.Data.Set.Pointwise.Basic
 import Mathlib.Data.Set.Finite
+import Mathlib.Data.Fintype.Card
+
+import Mathlib.Data.Fintype.Basic
 import Mathlib.Logic.Function.Defs
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Topology.Defs.Basic
+
 import Mathlib.Topology.Constructions
 import Mathlib.Topology.Compactness.Compact
 import Mathlib.Topology.UniformSpace.Basic
@@ -110,13 +113,13 @@ lemma leftMul_one {G A: Type} {x: G → A} [Monoid G]: x ∘ leftMul 1 = x := by
   ext
   simp [leftMul]
 
-lemma eval_at_one {G A: Type} [Group G] {τ: (G → A) → G → A}
+lemma eval_at_one {G A: Type} [Monoid G] {τ: (G → A) → G → A}
   (x: G → A) (g: G) (h: equivariant τ): τ x g = τ (x ∘ leftMul g) 1 := by
   rw [h]
   simp [leftMul]
 
--- proposition 1.4.6
-theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
+-- μ is a local map for τ iff. τ is equivariant and ∀ x, τ(x)(1) = μ (x|S)
+theorem local_map_iff {G A: Type} [Monoid G] [TopologicalSpace A] [DiscreteTopology A]
   {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
   local_map τ μ ↔ equivariant τ ∧ ∀ x: G → A, τ x 1 = μ (Set.restrict S x) := by
   constructor
@@ -136,6 +139,7 @@ theorem cellular_automata_iff {G A: Type} [Group G] [TopologicalSpace A] [Discre
     simp [leftMul]
 
 /-
+-- composition of two sliding block codes is a sliding block code
 theorem sliding_block_compose {G A: Type} [Mul G]
   {τ1: (G → A) → G → A} {τ2: (G → A) → G → A}
   {S1 S2: Set G} (h1: memory_set τ1 S1) (h2: memory_set τ2 S2):
@@ -149,8 +153,8 @@ theorem sliding_block_compose {G A: Type} [Mul G]
     sorry
 -/
 
--- proposition 1.4.8
-theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A] [DiscreteTopology A]
+-- every sliding block code is continuous
+theorem sliding_block_code_continuous {G A: Type} [Monoid G] [TopologicalSpace A] [DiscreteTopology A]
   {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
   apply continuous_of_neighborhood_continuous.mpr
   intro x W hW
@@ -171,7 +175,7 @@ theorem sliding_block_code_continuous {G A: Type} [Group G] [TopologicalSpace A]
     exact memory_set_eq ⟨hS1, hS2⟩ hy.1
   exact le_trans h1 hΩ2
 
--- curtis hedlund theorem reverse direction
+-- helper lemmas
 theorem exists_neighbor_eqAt_one {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {τ: (G → A) → G → A} (h1: Continuous τ):
   ∀ x: G → A, ∃ Ω: Set G, Finite Ω ∧ ∀ y: G → A, y ∈ neighbors x Ω → τ x 1 = τ y 1 := by
     let φ := proj 1 ∘ τ
@@ -194,41 +198,30 @@ theorem exists_neighbor_eqAt_one {G A: Type} [TopologicalSpace A] [DiscreteTopol
           _ = φ y := by rw [Eq.symm ((hV2 y) (hU2 hy))]
           _ = τ y 1 := by rfl
 
-theorem Set.eqOn_trans
-  {X Y: Type} {S: Set X} {f g h: X → Y}
-  (h1: Set.EqOn f g S) (h2: Set.EqOn g h S): Set.EqOn f h S := by
-  intro _ hx
-  exact Eq.trans (h1 hx) (h2 hx)
+theorem exists_extension {X Y: Type} {S: Set X} [Nonempty Y]:
+  ∀ f: S → Y, ∃ F: X → Y, Set.restrict S F = f := by
+  classical -- ensures decidable membership of S
+  intro f
+  exists fun x => if h: x ∈ S then f ⟨x, h⟩ else Classical.ofNonempty
+  simp
 
-lemma set_EqOn_eqv {X Y: Type} (S: Set X):
-  Equivalence (fun x y: X → Y => Set.EqOn x y S):= by
-  constructor
-  intro x
-  exact Set.eqOn_refl x S
-  intro
-  exact Set.eqOn_comm.mp
-  intro _ _ _ h1 h2
-  exact Set.eqOn_trans h1 h2
+theorem exists_extension_map {X: Type} (S: Set X) (Y: Type) [Nonempty Y]:
+  ∃ F: (S → Y) → (X → Y), ∀ u: S → Y, Set.restrict S (F u) = u := by
+  exists fun u => Classical.choose (exists_extension u)
+  intro u
+  exact Classical.choose_spec (exists_extension u)
 
-def set_EqOn_setoid {X: Type} (S: Set X) (Y: Type):
-  Setoid (X → Y) := {
-    r := fun x y: X → Y => Set.EqOn x y S
-    iseqv := set_EqOn_eqv S
-  }
+theorem exists_local_map {X Y Z: Type} {F: (X → Y) → Z} {S: Set X} [Nonempty Y]
+  (h: ∀ u v: X → Y, Set.EqOn u v S → F u = F v):
+  ∃ F': (S → Y) → Z, ∀ u: X → Y, F u = F' (Set.restrict S u) := by
+  obtain ⟨G, hG⟩ := exists_extension_map S Y
+  exists F ∘ G
+  intro u
+  apply h
+  rw [←Set.restrict_eq_restrict_iff, hG (S.restrict u)]
 
-def set_EqOn_quotient {X Y: Type} (S: Set X) :=
-  Quotient (set_EqOn_setoid S Y)
-
-theorem exists_local_map {G A: Type} {φ: (G → A) → A} {S: Set G}
-  (h: ∀ x y: G → A, Set.EqOn x y S → φ x = φ y):
-  ∃ μ: (S → A) → A, ∀ x: G → A, φ x = μ (Set.restrict S x) := by
-  have := set_EqOn_setoid S A
-  have h1: ∀ (x y : G → A), x ≈ y → φ x = φ y := sorry
-  let μ := Quotient.lift φ h1
-  -- prove there is bijection between Quotient this and S → Y?
-  sorry
-
-theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
+-- if A is finite and τ: (G → A) → G → A is continuous and equivariant then it is a sliding block
+theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Monoid G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
   (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
   have h3: ∃ Ω: (G → A) → Set G, ∀ x: G → A, Finite (Ω x) ∧ ∀ y: G → A, y ∈ neighbors x (Ω x) → τ x 1 = τ y 1 := by
     exists fun x => Classical.choose (exists_neighbor_eqAt_one h1 x)
@@ -269,14 +262,17 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Group G] [
     simp [proj, ←(hΩ x0).2 x hx02, (hΩ x0).2 y (Set.EqOn.trans hx02 (Set.EqOn.mono (h8 x0 hx01) h))]
   obtain ⟨μ, hμ⟩ := exists_local_map h9
   exists μ
-  apply (cellular_automata_iff h6 μ).mpr
+  apply (local_map_iff h6 μ).mpr
   exact ⟨h2, hμ⟩
 
--- theorem 1.8.1
-theorem curtis_hedlund_lyndon {G A: Type} [Group G] [Finite A] [TopologicalSpace A] [DiscreteTopology A]
+/-
+Curtis-Hedlund-Lyndon theorem:
+If A is finite then a map τ: (G → A) → (G → A) is a sliding block code iff. it is both equivariant and continuous
+-/
+theorem curtis_hedlund_lyndon {G A: Type} [Monoid G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A]
   (τ: (G → A) → G → A):
   sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
-  apply Iff.intro
+  constructor
   exact fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩
   exact fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2
 
