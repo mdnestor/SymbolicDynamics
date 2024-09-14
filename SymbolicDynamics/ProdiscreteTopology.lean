@@ -238,13 +238,78 @@ Proof idea:
            ⊆ N
 -/
 
-theorem lemma0 {f: A → B} (h2: X ⊆ {C | ∃ x, y = f x}):
-  ∃ p: Set A, X = Set.image f p := by
-  sorry
+theorem lemma0 {X Y Z: Type} {f: X → Y → Z} {S: Set Z}
+  (h2: S ⊆ {z | ∃ x y, z = f x y}):
+  ∃ p: S → X × Y, ∀ z: S, f (p z).1 (p z).2 = z := by
+  let p: S → X × Y := by
+    intro ⟨s, hs⟩
+    have h3 := h2 hs
+    simp at h3
+    let x := Classical.choose h3
+    let h4 := Classical.choose_spec h3
+    let y := Classical.choose h4
+    exact (x, y)
+  exists p
+  simp
+  intro z hz
+  have h3 := h2 hz
+  simp at h3
+  let h4 := Classical.choose_spec h3
+  let h5 := Classical.choose_spec h4
+  rw [← h5]
 
-theorem lemma1 {f: A → B → Set C} (h1: X.Finite) (h2: X ⊆ {C | ∃ x y, C = f x y}):
+theorem lemma1 {X Y Z: Type} {f: X → Y → Z} {S: Set Z}
+  (h2: S ⊆ {z | ∃ x y, z = f x y}):
+  ∃ p1: S → X, ∃ p2: S → Y, ∀ z: S, f (p1 z) (p2 z) = z := by
+  obtain ⟨p, hp⟩ := lemma0 h2
+  exists fun z => (p z).1
+  exists fun z => (p z).2
+
+theorem lemma2 {A B C: Type} {f: A → B → Set C} {X: Set (Set C)} (h1: Finite X) (h2: X ⊆ {C | ∃ x y, C = f x y}):
   ∃ p: Set (A × B), p.Finite ∧ X = Set.image (fun (x, y) => f x y) p := by
-  sorry
+  -- Step 1: Use choice on h2 to get functions that pick x and y for each C in X
+  have h1 : ∃ pick_x : X → A, ∃ pick_y : X → B,
+    ∀ c : X, f (pick_x c) (pick_y c) = c := lemma1 h2
+  obtain ⟨ pick_x, pick_y, hpick⟩ := h1
+  -- Step 2: Define p as the set of pairs (pick_x C, pick_y C) for C in X
+  -- let p := {pair : A × B | ∃ x: X, pair = (pick_x x, pick_y x)}
+  -- should instead define p as image
+  let p := Set.image (fun x => (pick_x x, pick_y x)) Set.univ
+  exists p
+  -- Step 3: Show that p is finite
+  constructor
+
+  -- image of finite is finite
+  apply Set.Finite.image
+  apply Set.finite_univ
+  simp_all only [Subtype.forall, Set.image_univ, p]
+  ext1 x
+  simp_all only [Set.mem_image, Set.mem_range, Subtype.exists, Prod.exists, Prod.mk.injEq]
+  apply Iff.intro
+  · intro a
+    apply Exists.intro
+    · apply Exists.intro
+      · apply And.intro
+        apply Exists.intro
+        apply Exists.intro
+        · apply And.intro
+          · rfl
+          · rfl
+        on_goal 3 => {
+          simp_all only
+          rfl
+        }
+        · simp_all only
+  · intro a
+    obtain ⟨w, h⟩ := a
+    obtain ⟨w_1, h⟩ := h
+    obtain ⟨left, right⟩ := h
+    obtain ⟨w_2, h⟩ := left
+    obtain ⟨w_3, h⟩ := h
+    obtain ⟨left, right_1⟩ := h
+    subst left right right_1
+    simp_all only
+
 
 theorem neighbors_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A):
   neighborhood_base x {U: Set (G → A) | ∃ Ω: Set G, Finite Ω ∧ U = neighbors x Ω } := by
@@ -262,7 +327,7 @@ theorem neighbors_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [Disc
     -- W is a finite set of cylinders
     -- so there must be a finite set of g ∈ G and U ⊆ A such that W is their union
 
-    have h2: ∃ params: Set (G × Set A), params.Finite ∧ Cs = Set.image (fun (gi, Ui) => cylinder gi Ui) params := lemma1 hCs.1.1 hCs.1.2
+    have h2: ∃ params: Set (G × Set A), params.Finite ∧ Cs = Set.image (fun (gi, Ui) => cylinder gi Ui) params := lemma2 hCs.1.1 hCs.1.2
     obtain ⟨params, hparams⟩ := h2
     --simp at hparams
     let Ω := Set.image (fun p => p.1) params
