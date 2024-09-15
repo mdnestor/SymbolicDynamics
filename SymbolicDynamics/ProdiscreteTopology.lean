@@ -164,7 +164,7 @@ theorem neighbors_empty {G A: Type} (x: G → A): neighbors x ∅ = Set.univ := 
   simp [neighbors]
 
 -- x ∈ neighbors(x, Ω)
-theorem x_in_neighbors {G A: Type} (x: G → A) (Ω: Set G): x ∈ neighbors x Ω := by
+theorem neighbors_self {G A: Type} (x: G → A) (Ω: Set G): x ∈ neighbors x Ω := by
   simp [neighbors, Set.EqOn]
 
 -- neighbors(x, Ω) is equal to the intersection of all cylinders of the form C(g, x(g)) for g ∈ Ω
@@ -195,7 +195,7 @@ theorem neighbors_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
 theorem neighbors_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
   (x: G → A) (Ω: Set G) (h: Finite Ω):
   neighbors x Ω ∈ nhds x := by
-  exact IsOpen.mem_nhds (neighbors_open x Ω h) (x_in_neighbors x Ω)
+  exact IsOpen.mem_nhds (neighbors_open x Ω h) (neighbors_self x Ω)
 
 -- TODO: replace with mathlib definition
 def neighborhood_base {X: Type} [TopologicalSpace X] (x: X) (B: Set (Set X)): Prop :=
