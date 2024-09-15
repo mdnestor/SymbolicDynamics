@@ -4,16 +4,17 @@ some alternative definitions using monoid actions
 
 -/
 
-import Mathlib.Algebra.Group.Defs
-import Mathlib.Algebra.Group.Action.Defs
-
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Function
 import Mathlib.Data.Set.Pointwise.Basic
 import Mathlib.Data.Set.Finite
+import Mathlib.Data.Fintype.Card
+
+import Mathlib.Data.Fintype.Basic
 import Mathlib.Logic.Function.Defs
 import Mathlib.Algebra.Group.Defs
 import Mathlib.Topology.Defs.Basic
+
 import Mathlib.Topology.Constructions
 import Mathlib.Topology.Compactness.Compact
 import Mathlib.Topology.UniformSpace.Basic
@@ -21,6 +22,7 @@ import Mathlib.Topology.UniformSpace.Pi
 import Mathlib.Topology.Separation
 import Mathlib.Topology.Connected.TotallyDisconnected
 
+import SymbolicDynamics.ProdiscreteTopology
 
 def equivariant {X Y Z: Type} (T: Type) [Monoid T] [MulAction T X]
   (F: (X → Y) → X → Z): Prop :=
@@ -74,6 +76,7 @@ theorem memory_set_eq {T X Y Z: Type} [Monoid T] [MulAction T X] (F: (X → Y) �
   exact ht
   exists x
 
+/-
 theorem local_map_iff {T X Y Z: Type} [Monoid T] [MulAction T X] (F: (X → Y) → X → Z) (S: Set T)
   {F: (X → Y) → X → Z} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
   local_map τ μ ↔ equivariant τ ∧ ∀ x: G → A, τ x 1 = μ (Set.restrict S x) := by
@@ -92,8 +95,42 @@ theorem local_map_iff {T X Y Z: Type} [Monoid T] [MulAction T X] (F: (X → Y) �
   . intro ⟨h1, h2⟩ x g
     rw [←h2 (x ∘ leftMul g), h1]
     simp [leftMul]
+-/
 
-theorem curtis_hedlund_lyndon {T X Y Z: Type} [Monoid T] [MulAction T X] [Finite Y] [Nonempty Y] [TopologicalSpace Y] [DiscreteTopology Y]
-  (F: (X → Y) → (X → Y)):
+theorem sliding_block_code_continuous {T X Y Z: Type} [Monoid T] [MulAction T X] [Finite Y] [Nonempty Y] [TopologicalSpace Y] [DiscreteTopology Y] [TopologicalSpace Z] [DiscreteTopology Z] {F: (X → Y) → X → Z}
+  {F: (X → Y) → X → Z} (h: sliding_block_code T F): Continuous F := by
+  apply continuous_of_neighborhood_continuous.mpr
+  intro u V hV
+  obtain ⟨Ω, hΩ1, hΩ2⟩ := neighbor_lemma hV
+  let ⟨S, hS1, hS2⟩ := h
+  let ΩS := setMul Ω S
+  exists neighbors u ΩS
+  apply And.intro
+  apply neighbors_is_nhd u ΩS
+  apply Set.Finite.image2
+  exact hΩ1
+  exact hS1
+  have h1: Set.image F (neighbors u ΩS) ⊆ neighbors (F u) Ω := by
+    intro Fy hFy
+    simp [neighbors] at hFy
+    obtain ⟨v, hv1, hv2⟩ := hFy
+    simp [neighbors, ←hv2]
+    exact memory_set_eq hS2 hv1
+  exact le_trans h1 hΩ2
+
+
+-- if X is nonempty and finite and F: (T → X) → T → Y is continuous and equivariant then it is a sliding block
+theorem sliding_block_code_of_continuous_and_equivariant {T X Y Z: Type} [Monoid T] [MulAction T X] [Finite Y] [Nonempty Y] [TopologicalSpace Y] [DiscreteTopology Y] [TopologicalSpace Z] [DiscreteTopology Z] {F: (X → Y) → X → Z}
+  (h1: Continuous F) (h2: equivariant T F): sliding_block_code T F := by
+  sorry
+
+theorem curtis_hedlund_lyndon {T X Y Z: Type} [Monoid T] [MulAction T X] [Finite Y] [Nonempty Y] [TopologicalSpace Y] [DiscreteTopology Y] [TopologicalSpace Z] [DiscreteTopology Z]
+  (F: (X → Y) → (X → Z)):
   sliding_block_code T F ↔ (Continuous F ∧ equivariant T F) := by
   sorry
+
+-- generalizes the other version since a monoid acts on itself via multiplication
+theorem curtis_hedlund_lyndon_ver2 {T Y Z: Type} [Monoid T] [Finite Y] [Nonempty Y] [TopologicalSpace Y] [DiscreteTopology Y] [TopologicalSpace Z] [DiscreteTopology Z]
+  (F: (T → Y) → (T → Z)):
+  sliding_block_code T F ↔ (Continuous F ∧ equivariant T F) :=
+  curtis_hedlund_lyndon F

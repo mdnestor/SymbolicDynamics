@@ -206,14 +206,14 @@ theorem exists_local_map {X Y Z: Type} {F: (X → Y) → Z} {S: Set X} [Nonempty
   apply h
   rw [←Set.restrict_eq_restrict_iff, hG (S.restrict u)]
 
--- if X is finite and F: (T → X) → T → Y is continuous and equivariant then it is a sliding block
+-- if X is nonempty and finite and F: (T → X) → T → Y is continuous and equivariant then it is a sliding block
 theorem sliding_block_code_of_continuous_and_equivariant {T X Y: Type} [Monoid T] [Finite X] [Nonempty X] [TopologicalSpace X] [DiscreteTopology X] [TopologicalSpace Y] [DiscreteTopology Y] {F: (T → X) → T → Y}
   (h1: Continuous F) (h2: equivariant F): sliding_block_code F := by
   have h3: ∃ Ω: (T → X) → Set T, ∀ u: T → X, Finite (Ω u) ∧ ∀ v: T → X, v ∈ neighbors u (Ω u) → F u 1 = F v 1 := by
     exists fun u => Classical.choose (exists_neighbor_eqAt_one h1 u)
     exact fun u => Classical.choose_spec (exists_neighbor_eqAt_one h1 u)
   obtain ⟨Ω, hΩ⟩ := h3
-  have h4 : ∀ u, Finite (Ω u) := fun u => (hΩ u).1
+  have h4 : ∀ u, Finite (Ω u) := fun u => (hΩ u).left
   have h5 : Set.univ ⊆ ⋃ u, neighbors u (Ω u) := by
     intro u _
     simp
@@ -223,16 +223,16 @@ theorem sliding_block_code_of_continuous_and_equivariant {T X Y: Type} [Monoid T
   simp at hC
   let S := Set.sUnion (Set.image Ω C)
   exists S
-  have h6 : Finite S := by
+  have hS: Finite S := by
     apply Set.Finite.sUnion
     exact Set.Finite.image Ω (by simp)
     intro _ hΩx
     rw [Set.image] at hΩx
     obtain ⟨x, hx⟩ := hΩx
-    rw [←hx.2]
+    rw [←hx.right]
     exact h4 x
   constructor
-  exact h6
+  exact hS
   have h7: ∀ x: T → X, ∃ x0 ∈ C, x ∈ neighbors x0 (Ω x0) := by
     apply Set.exists_set_mem_of_union_eq_top
     apply Set.eq_univ_of_univ_subset
@@ -244,11 +244,11 @@ theorem sliding_block_code_of_continuous_and_equivariant {T X Y: Type} [Monoid T
     exists x
   have h9: ∀ x y: T → X, Set.EqOn x y S → (proj 1) (F x) = (proj 1) (F y) := by
     intro x y h
-    obtain ⟨x0, hx01, hx02⟩ := h7 x
-    simp [proj, ←(hΩ x0).2 x hx02, (hΩ x0).2 y (Set.EqOn.trans hx02 (Set.EqOn.mono (h8 x0 hx01) h))]
+    obtain ⟨x0, hx0⟩ := h7 x
+    simp [proj, ←(hΩ x0).right x hx0.right, (hΩ x0).2 y (Set.EqOn.trans hx0.right (Set.EqOn.mono (h8 x0 hx0.left) h))]
   obtain ⟨f, hf⟩ := exists_local_map h9
   exists f
-  apply (local_map_iff h6 f).mpr
+  apply (local_map_iff hS f).mpr
   exact ⟨h2, hf⟩
 
 /-

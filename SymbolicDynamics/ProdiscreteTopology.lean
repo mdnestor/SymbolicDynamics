@@ -12,27 +12,67 @@ import Mathlib.Topology.UniformSpace.Basic
 import Mathlib.Topology.UniformSpace.Pi
 import Mathlib.Topology.Separation
 import Mathlib.Topology.Connected.TotallyDisconnected
+import Mathlib.Topology.Metrizable.Basic
+import Mathlib.Topology.Perfect
+-- import Mathlib.Topology.Metrizable.Urysohn -- this introduces a lot of imports
 
 -- the prodiscrete topology is the product of discrete spaces via the Π construction
-def product_space (G A: Type) [TopologicalSpace A]: TopologicalSpace (G → A) :=
+instance prodiscrete_space (G A: Type) [TopologicalSpace A] [DiscreteTopology A]: TopologicalSpace (G → A) :=
   Pi.topologicalSpace
 
-def prodiscrete_space (G A: Type) [TopologicalSpace A] [DiscreteTopology A]: TopologicalSpace (G → A) :=
-  product_space G A
-
--- it is both T2 (Hausdorff) and totally disconnected
-theorem prodiscrete_T2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+-- prodiscrete space is T2 (Hausdorff)
+instance prodiscrete_T2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
   T2Space (G → A) :=
   Pi.t2Space
 
+-- prodiscrete space is totally disconnceted
 theorem prodiscrete_totally_disconnected {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
   TotallyDisconnectedSpace (G → A) :=
   Pi.totallyDisconnectedSpace
+
+instance prodiscrete_T0 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+  T0Space (G → A) := by
+  exact Pi.instT0Space
+
+-- discrete topology is regular
+instance {A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+  RegularSpace A := by
+  apply RegularSpace.of_exists_mem_nhds_isClosed_subset
+  intro x U hU
+  exists U
+  constructor
+  exact hU
+  constructor
+  simp
+  rfl
+
+-- the prodiscrete topology is regular
+instance {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+  RegularSpace (G → A) :=
+  instRegularSpaceForall
+
+theorem prodiscrete_T3 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+  T3Space (G → A) := by
+  apply RegularSpace.t3Space_iff_t0Space.mpr
+  exact prodiscrete_T0
+
+/-
+-- prodiscrete space is metrizable
+theorem prodiscrete_metrizable {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
+  TopologicalSpace.MetrizableSpace (G → A) :=
+  TopologicalSpace.metrizableSpace_of_t3_second_countable
+-/
 
 -- if A is finite then A^G is compact
 theorem prodiscrete_compact {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
   CompactSpace (G → A) :=
   Pi.compactSpace
+
+/-
+theorem prodiscrete_perfect {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
+  PerfectSpace (G → A) := by
+  sorry
+-/
 
 -- projection map
 def proj {G A: Type} (g: G): (G → A) → A :=
@@ -251,7 +291,7 @@ theorem lemma2 {A B C: Type} {f: A → B → Set C} {X: Set (Set C)} (h1: Finite
   . simp_all
     ext
     simp_all
-    apply Iff.intro
+    constructor
     · intro a
       constructor
       · constructor
@@ -277,7 +317,7 @@ theorem lemma2 {A B C: Type} {f: A → B → Set C} {X: Set (Set C)} (h1: Finite
       simp_all only
 
 /-
-V(x, Ω) forms a neighborhood basis for x
+the set {V(x, Ω) | Ω finite} forms a neighborhood basis for x
 
 Proof idea:
 
@@ -338,16 +378,16 @@ theorem neighbors_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [Disc
                               _ = B := hCs.2
                               _ ⊆ V := hB3
 
--- "Let x: G → A and let W be a neighborhood of τ(x). Then we can find a finite subset Ω ⊆ G such that V(τ(x), Ω) ⊆ W" why..?
+-- let x: G → A and let U be a neighborhood of x
+-- then there exists finite Ω ⊆ G such that V(x, Ω) ⊆ U
 theorem neighbor_lemma {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
-  {W: Set (G → A)} {x: G → A} (h2: W ∈ nhds x):
-  ∃ Ω: Set G, Finite Ω ∧ neighbors x Ω ⊆ W := by
-  have h3 := neighbors_forms_neighborhood_base x
-  simp [neighborhood_base] at h3
-  obtain ⟨U, hU⟩ := h3.2 W h2
-  obtain ⟨Ω, hΩ⟩ := hU.1
+  {U: Set (G → A)} {x: G → A} (h: U ∈ nhds x):
+  ∃ Ω: Set G, Finite Ω ∧ neighbors x Ω ⊆ U := by
+  have := neighbors_forms_neighborhood_base x
+  obtain ⟨V, hV1, hV2⟩ := this.right U h
+  obtain ⟨Ω, hΩ1, hΩ2⟩ := hV1
   exists Ω
   constructor
-  exact hΩ.1
-  rw [←hΩ.2]
-  exact hU.2
+  exact hΩ1
+  rw [←hΩ2]
+  exact hV2
