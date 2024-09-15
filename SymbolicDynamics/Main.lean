@@ -37,7 +37,7 @@ def local_map {G A B: Type} [Mul G] {S: Set G} (τ: (G → A) → G → B) (μ: 
   ∀ x: G → A, ∀ g: G, τ x g = μ (Set.restrict S (x ∘ (leftMul g)))
 
 def memory_set {G A B: Type} [Mul G] (τ: (G → A) → G → B) (S: Set G): Prop :=
-  Finite S ∧ ∃ μ: (S → A) → B, local_map τ μ
+  ∃ μ: (S → A) → B, local_map τ μ
 
 def memory_finset {G A B: Type} [Mul G] (τ: (G → A) → G → B) (S: Finset G): Prop :=
   ∃ μ: (S → A) → B, local_map τ μ
@@ -49,7 +49,7 @@ def window {A M: Type} (Λ: Set (M → A)) (N: Set M): Set (N → A) :=
   {w: N → A | ∃ x ∈ Λ, w = Set.restrict N x}
 
 def sliding_block_code {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :=
-  ∃ S: Set M, memory_set Φ S
+  ∃ S: Set M, Finite S ∧ memory_set Φ S
 
 def sliding_block_code_fin {A B M: Type} [Mul M] (Φ: (M → A) → M → B): Prop :=
   ∃ S: Finset M, memory_finset Φ S
@@ -92,12 +92,12 @@ def setMul [Mul G] (A B: Set G) : Set G :=
 -- if τ is a sliding block code with memory set S
 -- if x and y are equal on Ω * S (pointwise multiplication)
 -- then τ(x) and τ(y) are equal on Ω
-theorem memory_set_eq {G A: Type} [Mul G]
-  {τ: (G → A) → G → A}
+theorem memory_set_eq {G A B: Type} [Mul G]
+  {τ: (G → A) → G → B}
   {S: Set G} (h1: memory_set τ S)
   {x y: G → A} {Ω: Set G} (h2: Set.EqOn x y (setMul Ω S)):
     Set.EqOn (τ x) (τ y) Ω := by
-  obtain ⟨_, μ, hμ⟩ := h1
+  obtain ⟨μ, hμ⟩ := h1
   intro g hg
   rw [hμ x g, hμ y g]
   apply congrArg
@@ -113,14 +113,14 @@ lemma leftMul_one {G A: Type} {x: G → A} [Monoid G]: x ∘ leftMul 1 = x := by
   ext
   simp [leftMul]
 
-lemma eval_at_one {G A: Type} [Monoid G] {τ: (G → A) → G → A}
+lemma eval_at_one {G A: Type} [Monoid G] {τ: (G → A) → G → B}
   (x: G → A) (g: G) (h: equivariant τ): τ x g = τ (x ∘ leftMul g) 1 := by
   rw [h]
   simp [leftMul]
 
 -- μ is a local map for τ iff. τ is equivariant and ∀ x, τ(x)(1) = μ (x|S)
-theorem local_map_iff {G A: Type} [Monoid G] [TopologicalSpace A] [DiscreteTopology A]
-  {τ: (G → A) → G → A} {S: Set G} (hS: Finite S) (μ: (S → A) → A):
+theorem local_map_iff {G A B: Type} [Monoid G]
+  {τ: (G → A) → G → B} {S: Set G} (hS: Finite S) (μ: (S → A) → B):
   local_map τ μ ↔ equivariant τ ∧ ∀ x: G → A, τ x 1 = μ (Set.restrict S x) := by
   constructor
   . intro h
@@ -154,8 +154,8 @@ theorem sliding_block_compose {G A: Type} [Mul G]
 -/
 
 -- every sliding block code is continuous
-theorem sliding_block_code_continuous {G A: Type} [Monoid G] [TopologicalSpace A] [DiscreteTopology A]
-  {τ: (G → A) → G → A} (h: sliding_block_code τ): Continuous τ := by
+theorem sliding_block_code_continuous {G A B: Type} [Monoid G] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
+  {τ: (G → A) → G → B} (h: sliding_block_code τ): Continuous τ := by
   apply continuous_of_neighborhood_continuous.mpr
   intro x W hW
   obtain ⟨Ω, hΩ1, hΩ2⟩ := neighbor_lemma hW
@@ -172,11 +172,11 @@ theorem sliding_block_code_continuous {G A: Type} [Monoid G] [TopologicalSpace A
     simp [neighbors] at hτy
     obtain ⟨y, hy⟩ := hτy
     simp [neighbors, ←hy.2]
-    exact memory_set_eq ⟨hS1, hS2⟩ hy.1
+    exact memory_set_eq hS2 hy.1
   exact le_trans h1 hΩ2
 
 -- helper lemmas
-theorem exists_neighbor_eqAt_one {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Monoid G] {τ: (G → A) → G → A} (h1: Continuous τ):
+theorem exists_neighbor_eqAt_one {G A B: Type} [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] [Monoid G] {τ: (G → A) → G → B} (h1: Continuous τ):
   ∀ x: G → A, ∃ Ω: Set G, Finite Ω ∧ ∀ y: G → A, y ∈ neighbors x Ω → τ x 1 = τ y 1 := by
     let φ := proj 1 ∘ τ
     have hφ : Continuous φ := Continuous.comp (continuous_apply 1) h1
@@ -221,7 +221,7 @@ theorem exists_local_map {X Y Z: Type} {F: (X → Y) → Z} {S: Set X} [Nonempty
   rw [←Set.restrict_eq_restrict_iff, hG (S.restrict u)]
 
 -- if A is finite and τ: (G → A) → G → A is continuous and equivariant then it is a sliding block
-theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Monoid G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] {τ: (G → A) → G → A}
+theorem sliding_block_code_of_continuous_and_equivariant {G A B: Type} [Monoid G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] {τ: (G → A) → G → B}
   (h1: Continuous τ) (h2: equivariant τ): sliding_block_code τ := by
   have h3: ∃ Ω: (G → A) → Set G, ∀ x: G → A, Finite (Ω x) ∧ ∀ y: G → A, y ∈ neighbors x (Ω x) → τ x 1 = τ y 1 := by
     exists fun x => Classical.choose (exists_neighbor_eqAt_one h1 x)
@@ -269,8 +269,8 @@ theorem sliding_block_code_of_continuous_and_equivariant {G A: Type} [Monoid G] 
 Curtis-Hedlund-Lyndon theorem:
 If A is finite then a map τ: (G → A) → (G → A) is a sliding block code iff. it is both equivariant and continuous
 -/
-theorem curtis_hedlund_lyndon {G A: Type} [Monoid G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A]
-  (τ: (G → A) → G → A):
+theorem curtis_hedlund_lyndon {G A: Type} [Monoid G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
+  (τ: (G → A) → G → B):
   sliding_block_code τ ↔ (Continuous τ ∧ equivariant τ) := by
   constructor
   exact fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩
