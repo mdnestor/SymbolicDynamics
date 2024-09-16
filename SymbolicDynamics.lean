@@ -1,2 +1,2 @@
-import SymbolicDynamics.Basic
+import SymbolicDynamics.Main
 import SymbolicDynamics.ProdiscreteTopology

@@ -1,15 +1,26 @@
 /-
 
-Curtis–Hedlund–Lyndon theorem
+Main reults:
 
-References
+-- defines the shift map and proves it is continuous
+-- defines sliding block code
+-- proves the Curtis–Hedlund–Lyndon (CHL) theorem
+-- defines subshifts
+
+TODO:
+
+-- variant of CHL theorem for subshifts
+-- CHL theorem for uniform structures
+-- shifts of finite type
+-- sofic shifts
+
+References:
 
 -- "Cellular automata and groups" by Ceccherini-Silberstein and Coornaert (2010)
 -- "A note on the definition of sliding block codes and the Curtis-Hedlund-Lyndon Theorem" by Sobottka and Goçcalves (2017) https://arxiv.org/abs/1507.02180
 -- "Some notes on the classification of shift spaces: Shifts of Finite Type; Sofic Shifts; and Finitely Defined Shifts" by Sobottka (2020) https://arxiv.org/abs/2010.10595
 -- "Symbolic dynamics" on Scholarpedia http://www.scholarpedia.org/article/Symbolic_dynamics
 
-todo: cleanup notation
 -/
 
 import Mathlib.Data.Set.Basic
@@ -32,13 +43,53 @@ import Mathlib.Topology.Connected.TotallyDisconnected
 
 import SymbolicDynamics.ProdiscreteTopology
 
--- definition of sliding block code based on definition 1.4.1
+open Topology
+
+-- results about the shift map
+def shift {M A: Type} [Mul M] (g: M): (M → A) → (M → A) :=
+  fun x => x ∘ leftMul g
+
+theorem shift_preimage_cylinder_eq {G A: Type} [Mul G] (g g': G) (S: Set A):
+  Set.preimage (shift g) (cylinder g' S) = cylinder (g * g') S := by
+  rfl
+
+theorem shift_continuous {M A: Type} [Mul M] (g: M) [TopologicalSpace A] [DiscreteTopology A]:
+  Continuous[Pi.topologicalSpace, Pi.topologicalSpace] (fun x: M → A => shift g x) := by
+  rw [pi_generateFrom_cylinders]
+  apply continuous_generateFrom_iff.mpr
+  intro V
+  simp
+  intro x U hV
+  rw [hV, shift_preimage_cylinder_eq]
+  apply TopologicalSpace.isOpen_generateFrom_of_mem
+  simp
 
 def local_map {A B T: Type} [Mul T] {S: Set T} (F: (T → A) → T → B) (f: (S → A) → B): Prop :=
-  ∀ x: T → A, ∀ t: T, F x t = f (Set.restrict S (x ∘ (leftMul t)))
+  ∀ x: T → A, ∀ t: T, F x t = f (Set.restrict S (shift t x))
 
 def memory_set {T X Y: Type} [Mul T] (F: (T → X) → T → Y) (S: Set T): Prop :=
   ∃ f: (S → X) → Y, local_map F f
+
+-- universe is a memory set
+def memory_set_univ {T X Y: Type} [Monoid T] {F: (T → X) → T → Y}:
+  memory_set F Set.univ := by
+  exists fun x => F (x ∘ (@Equiv.Set.univ T).invFun) 1
+  intro x t
+  simp
+  sorry
+
+-- if T is a monoid then {1} is a memory set for the identity on T → X
+def memory_set_id_empty {T X: Type} [Monoid T]:
+  memory_set (fun x: T → X => x) {1} := by
+  exists fun x => x ⟨1, rfl⟩
+  intro
+  simp [leftMul, shift]
+
+-- memory sets are upward closed
+def memory_set_incl {T X Y: Type} [Mul T] {F: (T → X) → T → Y} {S1 S2: Set T}
+  (h1: memory_set F S1) (h2: S1 ⊆ S2): memory_set F S2 := by
+  obtain ⟨f1, hf1⟩ := h1
+  exists fun x => f1 (fun ⟨a, ha⟩ => x ⟨a, h2 ha⟩)
 
 -- definition of sliding block code: there exists a finite memory set
 -- todo: generalize to shift spaces besides the full shit spaces
@@ -64,12 +115,18 @@ theorem sliding_block_equivariant {T X Y: Type} [Semigroup T] {F: (T → X) → 
   intro u t
   obtain ⟨S, _, f, hf⟩ := h
   ext t'
+  simp [hf (u ∘ leftMul t) t',
+    Function.comp.assoc]
+  -- simp [shift]
+  simp [leftMul_comp]
+  simp [←hf u (t * t')]
   simp [
     hf (u ∘ leftMul t) t',
     Function.comp.assoc,
     leftMul_comp,
+    shift,
     ←hf u (t * t'),
-    leftMul
+    shift
   ]
 
 def setMul [Mul T] (S1 S2: Set T) : Set T :=
@@ -119,25 +176,20 @@ theorem local_map_iff {T X Y: Type} [Monoid T]
     constructor
     exact sliding_block_equivariant h1
     intro x
-    simp [h x, leftMul_one]
+    simp [h x, leftMul_one, shift]
   . intro ⟨h1, h2⟩ x g
-    rw [←h2 (x ∘ leftMul g), h1]
+    rw [shift, ←h2 (x ∘ leftMul g), h1]
     simp [leftMul]
 
-/-
 -- composition of two sliding block codes is a sliding block code
-theorem sliding_block_compose {G A: Type} [Mul G]
-  {F1: (G → A) → G → A} {F2: (G → A) → G → A}
+theorem sliding_block_compose {G A B C: Type} [Mul G]
+  {F1: (G → A) → G → B} {F2: (G → B) → G → C}
   {S1 S2: Set G} (h1: memory_set F1 S1) (h2: memory_set F2 S2):
   memory_set (F2 ∘ F1) (setMul S1 S2) := by
-    obtain ⟨hS1, f1, hf1⟩ := h1
-    obtain ⟨hS2, f2, hf2⟩ := h2
-    constructor
-    apply Set.Finite.image2
-    exact hS1
-    exact hS2
+    obtain ⟨f1, hf1⟩ := h1
+    obtain ⟨f2, hf2⟩ := h2
+    -- need a map from ((S1*S2) → A) → C
     sorry
--/
 
 -- every sliding block code is continuous
 theorem sliding_block_code_continuous {T X Y: Type} [Monoid T] [TopologicalSpace X] [DiscreteTopology X] [TopologicalSpace Y] [DiscreteTopology Y]
@@ -262,11 +314,20 @@ theorem curtis_hedlund_lyndon {G A: Type} [Monoid G] [Finite A] [Nonempty A] [To
   exact fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩
   exact fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2
 
-/-
+-- uniform space
+instance {G A: Type} [UniformSpace A]:
+  UniformSpace (G → A) :=
+  Pi.uniformSpace (fun _ => A)
+
+instance {G A: Type} [UniformSpace A] (h: uniformity A = Filter.principal idRel):
+  uniformity (G → A) = Filter.principal idRel := by
+  sorry
+
+
 theorem uniform_continuous_of_sliding_block_code {G A: Type} [Group G] [UniformSpace A] {F: (G → A) → G → A} (h: uniformity A = Filter.principal idRel) (h1: sliding_block_code F): UniformContinuous F :=
   sorry
 
-theorem sliding_block_code_of_uniform_continuous_and_equivariant {G A: Type} [Group G] [UniformSpace A] {F: (G → A) → G → A} (h: uniformity A = Filter.principal idRel) (h1: UniformContinuous F) (h2:equivariant F): sliding_block_code F :=
+theorem sliding_block_code_of_uniform_continuous_and_equivariant {G A: Type} [Group G] [UniformSpace A] {F: (G → A) → G → A} (h: uniformity A = Filter.principal idRel) (h1: UniformContinuous F) (h2:equivariant F): sliding_block_code F := by
   sorry
 
 -- drops the finite assumption
@@ -274,4 +335,90 @@ theorem curtis_hedlund_lyndon_uniform {G A: Type} [Group G] [UniformSpace A] (h:
   apply Iff.intro
   exact fun h1 => ⟨uniform_continuous_of_sliding_block_code h h1, sliding_block_equivariant h1⟩
   exact fun ⟨h1, h2⟩ => sliding_block_code_of_uniform_continuous_and_equivariant h h1 h2
--/
+
+class Subshift {M A: Type} [Mul M] [TopologicalSpace A] (S: Set (M → A)): Prop where
+  closed: IsClosed S
+  shift_invariant: ∀ x ∈ S, ∀ g: M, shift g x ∈ S
+
+export Subshift (closed shift_invariant)
+
+-- TODO: characterize subshift in terms of "forbidden blocks"
+
+@[simp]
+def empty (A: Type): Set A := ∅
+
+theorem Subshift_empty {M A: Type} [Mul M] [TopologicalSpace A]:
+  Subshift (empty (M → A)) := by
+  constructor <;> simp
+
+theorem Subshift_univ {M A: Type} [Mul M] [TopologicalSpace A]:
+  Subshift (Set.univ (α := M → A)) := by
+  constructor <;> simp
+
+-- artbirary intersections of Subshifts are Subshifts
+theorem Subshift_sInter {M A: Type} [Mul M] [TopologicalSpace A]
+  (Λs: Set (Set (M → A))) (h: ∀ Λ ∈ Λs, Subshift Λ): Subshift (Set.sInter Λs) := by
+  constructor
+  apply isClosed_sInter
+  intro Λ hΛ
+  exact (h Λ hΛ).1
+  intro x hx g Λ hΛ
+  exact (h Λ hΛ).2 x (hx Λ hΛ) g
+
+theorem Subshift_iInter {M A: Type} [Mul M] [TopologicalSpace A]
+  {I: Type} (Λ: I → (Set (M → A))) (h: ∀ i: I, Subshift (Λ i)): Subshift (Set.iInter Λ) := by
+  constructor
+  apply isClosed_iInter
+  intro i
+  exact (h i).1
+  intro x hx g Λ hΛ
+  simp at hx
+  obtain ⟨i, hi⟩ := hΛ
+  rw [←hi]
+  exact (h i).2 x (hx i) g
+
+theorem Subshift_iUnion {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopology A]
+  {I: Type} [Finite I] (Λ: I → Set (M → A)) (h: ∀ i: I, Subshift (Λ i)): Subshift (Set.iUnion Λ) := by
+  constructor
+  apply isClosed_iUnion_of_finite
+  intro i
+  exact (h i).1
+  intro x hx g
+  let ⟨Λi, hΛi⟩ := hx
+  exists Λi
+  constructor
+  exact hΛi.1
+  simp at hx
+  obtain ⟨i, hi⟩ := hx
+  sorry
+
+-- the preimage of a subshift under a sliding block code is a subshift
+
+-- may hold when A is not necessarily finite
+theorem Subshift_preimage {M A B: Type} [Monoid M] [Nonempty A] [Finite A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
+  (F: (M → A) → (M → B)) (h: sliding_block_code F) (Λ2: Set (M → B)) [Subshift Λ2]:
+    Subshift (Set.preimage F Λ2) := by
+  have ⟨hF1, hF2⟩ := (curtis_hedlund_lyndon F).mp h
+  constructor
+  apply IsClosed.preimage
+  exact hF1
+  exact closed
+  intro x hx g
+  simp [shift]
+  rw [hF2]
+  exact shift_invariant (F x) hx g
+
+theorem Subshift_image {M A B: Type} [Monoid M] [Nonempty A] [Finite A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
+  (F: (M → A) → (M → B)) (h: sliding_block_code F) (Λ1: Set (M → A)) [Subshift Λ1]:
+    Subshift (Set.image F Λ1) := by
+  have ⟨hF1, hF2⟩ := (curtis_hedlund_lyndon F).mp h
+  constructor
+  sorry
+  intro x hx g
+  obtain ⟨y, hy1, hy2⟩ := hx
+  simp
+  exists shift g y
+  constructor
+  exact shift_invariant y hy1 g
+  simp [shift]
+  rw [hF2, hy2]
