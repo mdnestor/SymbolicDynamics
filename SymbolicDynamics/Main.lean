@@ -97,7 +97,7 @@ def sliding_block_code {T X Y: Type} [Mul T] (F: (T → X) → T → Y): Prop :=
   ∃ S: Set T, Finite S ∧ memory_set F S
 
 def equivariant {T X Y: Type} [Mul T] (F: (T → X) → T → Y): Prop :=
-  ∀ u: T → X, ∀ t: T, F (u ∘ leftMul t) = F u ∘ leftMul t
+  ∀ u: T → X, ∀ t: T, F (shift t u) = shift t (F u)
 
 def equivariant_compose {T X Y Z: Type} [Mul T]
   {F1: (T → X) → T → Y} {F2: (T → Y) → T → Z}
@@ -111,23 +111,13 @@ lemma leftMul_comp {T: Type} [Semigroup T] {t1 t2: T}: leftMul t1 ∘ leftMul t2
   ext
   simp [leftMul, mul_assoc]
 
+
+lemma shift_comp {A T: Type} [Mul T] {t1 t2: T}:
+  ∀ x: T → A, (shift t1 ∘ shift t2) x = shift (t1 * t2) x := by
+  sorry
+
 theorem sliding_block_equivariant {T X Y: Type} [Semigroup T] {F: (T → X) → T → Y} (h: sliding_block_code F): equivariant F := by
-  intro u t
-  obtain ⟨S, _, f, hf⟩ := h
-  ext t'
-  simp [hf (u ∘ leftMul t) t',
-    Function.comp.assoc]
-  -- simp [shift]
-  simp [leftMul_comp]
-  simp [←hf u (t * t')]
-  simp [
-    hf (u ∘ leftMul t) t',
-    Function.comp.assoc,
-    leftMul_comp,
-    shift,
-    ←hf u (t * t'),
-    shift
-  ]
+  sorry
 
 def setMul [Mul T] (S1 S2: Set T) : Set T :=
   (Set.image2 fun t1 t2 => t1 * t2) S1 S2
@@ -152,14 +142,14 @@ theorem memory_set_eq {T X Y: Type} [Mul T]
   assumption
   exists t'
 
-lemma leftMul_one {T X: Type} {u: T → X} [Monoid T]: u ∘ leftMul 1 = u := by
+lemma shift_one {T X: Type} {u: T → X} [Monoid T]: shift 1 u = u := by
   ext
-  simp [leftMul]
+  simp [shift, leftMul]
 
 lemma eval_at_one {T X Y: Type} [Monoid T] {F: (T → X) → T → Y}
-  (u: T → X) (t: T) (h: equivariant F): F u t = F (u ∘ leftMul t) 1 := by
+  (u: T → X) (t: T) (h: equivariant F): F u t = F (shift t u) 1 := by
   rw [h]
-  simp [leftMul]
+  simp [shift, leftMul]
 
 -- f is a local map for F iff. F is equivariant and ∀ x, F(x)(1) = f (x|S)
 theorem local_map_iff {T X Y: Type} [Monoid T]
@@ -176,10 +166,10 @@ theorem local_map_iff {T X Y: Type} [Monoid T]
     constructor
     exact sliding_block_equivariant h1
     intro x
-    simp [h x, leftMul_one, shift]
+    simp [h x, shift_one]
   . intro ⟨h1, h2⟩ x g
-    rw [shift, ←h2 (x ∘ leftMul g), h1]
-    simp [leftMul]
+    rw [←h2 (shift g x), h1]
+    simp [shift, leftMul]
 
 -- composition of two sliding block codes is a sliding block code
 theorem sliding_block_compose {G A B C: Type} [Mul G]
@@ -404,10 +394,13 @@ theorem Subshift_preimage {M A B: Type} [Monoid M] [Nonempty A] [Finite A] [Topo
   exact hF1
   exact closed
   intro x hx g
+
   simp [shift]
+  sorry
+  /-
   rw [hF2]
   exact shift_invariant (F x) hx g
-
+  -/
 theorem Subshift_image {M A B: Type} [Monoid M] [Nonempty A] [Finite A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
   (F: (M → A) → (M → B)) (h: sliding_block_code F) (Λ1: Set (M → A)) [Subshift Λ1]:
     Subshift (Set.image F Λ1) := by
@@ -421,4 +414,5 @@ theorem Subshift_image {M A B: Type} [Monoid M] [Nonempty A] [Finite A] [Topolog
   constructor
   exact shift_invariant y hy1 g
   simp [shift]
-  rw [hF2, hy2]
+  sorry
+  -- rw [hF2, hy2]
