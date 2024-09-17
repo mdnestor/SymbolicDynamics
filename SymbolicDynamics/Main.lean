@@ -11,6 +11,7 @@ TODO:
 
 -- variant of CHL theorem for subshifts
 -- CHL theorem for uniform structures
+-- characterize subshifts in terms of forbidden blocks
 -- shifts of finite type
 -- sofic shifts
 
@@ -29,6 +30,7 @@ import Mathlib.Data.Set.Pointwise.Basic
 import Mathlib.Data.Set.Finite
 import Mathlib.Data.Fintype.Card
 
+-- import Mathlib.Algebra.Group.Pointwise.Set -- causes build to fail?
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Logic.Function.Defs
 import Mathlib.Algebra.Group.Defs
@@ -49,6 +51,14 @@ open Topology
 def shift {M A: Type} [Mul M] (g: M): (M → A) → (M → A) :=
   fun x => x ∘ leftMul g
 
+theorem shift_comp {M A: Type} [Semigroup M] {x: M → A} {g1 g2: M}: shift g1 (shift g2 x) = shift (g2 * g1) x := by
+  ext
+  simp [shift, leftMul, mul_assoc]
+
+theorem shift_one {T X: Type} {u: T → X} [Monoid T]: shift 1 u = u := by
+  ext
+  simp [shift, leftMul]
+
 theorem shift_preimage_cylinder_eq {G A: Type} [Mul G] (g g': G) (S: Set A):
   Set.preimage (shift g) (cylinder g' S) = cylinder (g * g') S := by
   rfl
@@ -64,60 +74,60 @@ theorem shift_continuous {M A: Type} [Mul M] (g: M) [TopologicalSpace A] [Discre
   apply TopologicalSpace.isOpen_generateFrom_of_mem
   simp
 
+-- F is equivariant if it commutes with the shift
+def equivariant {T X Y: Type} [Mul T] (F: (T → X) → T → Y): Prop :=
+  ∀ u: T → X, ∀ t: T, F (shift t u) = shift t (F u)
+
+theorem shift_one_equivariant {T X Y: Type} [Monoid T] {F: (T → X) → T → Y} {x: T → X} {t: T}
+  (hf: equivariant F): F x t = F (shift t x) 1 := by
+  calc
+    F x t = F x (t * 1) := by rw [mul_one]
+        _ = ((F x) ∘ (leftMul t)) 1 := by rfl
+        _ = (shift t (F x)) 1 := by rfl
+  rw [hf]
+
 def local_map {A B T: Type} [Mul T] {S: Set T} (F: (T → A) → T → B) (f: (S → A) → B): Prop :=
   ∀ x: T → A, ∀ t: T, F x t = f (Set.restrict S (shift t x))
+
+-- if F has a local map then it is equivariant
+theorem local_map_equivariant {A B T: Type} [Semigroup T] {S: Set T} {F: (T → A) → T → B} {f: (S → A) → B}
+  (h: local_map F f): equivariant F := by
+  intro u t
+  ext t'
+  rw [h (shift t u) t']
+  --rw [shift_comp]
+
+  repeat simp [shift]
+  rw [h]
+  congr
+  rw [Set.restrict_eq_restrict_iff]
+  apply Set.EqOn.mono (Set.subset_univ S)
+  apply (Set.eqOn_univ ((u ∘ leftMul t) ∘ leftMul t') (shift (leftMul t t') u)).mpr
+  ext
+  simp [shift, leftMul]
+  rw [mul_assoc]
 
 def memory_set {T X Y: Type} [Mul T] (F: (T → X) → T → Y) (S: Set T): Prop :=
   ∃ f: (S → X) → Y, local_map F f
 
--- universe is a memory set
-def memory_set_univ {T X Y: Type} [Monoid T] {F: (T → X) → T → Y}:
-  memory_set F Set.univ := by
+-- if F is equivariant and T is a monoid then the universe is a memory set
+def memory_set_univ {T X Y: Type} [Monoid T] {F: (T → X) → T → Y}
+  (hf: equivariant F): memory_set F Set.univ := by
   exists fun x => F (x ∘ (@Equiv.Set.univ T).invFun) 1
-  intro x t
-  simp
-  sorry
+  intro _ _
+  rw [shift_one_equivariant hf]
+  congr
 
 -- if T is a monoid then {1} is a memory set for the identity on T → X
-def memory_set_id_empty {T X: Type} [Monoid T]:
-  memory_set (fun x: T → X => x) {1} := by
+def memory_set_id {T X: Type} [Monoid T]: memory_set (@id (T → X)) {1} := by
   exists fun x => x ⟨1, rfl⟩
   intro
   simp [leftMul, shift]
 
 -- memory sets are upward closed
-def memory_set_incl {T X Y: Type} [Mul T] {F: (T → X) → T → Y} {S1 S2: Set T}
-  (h1: memory_set F S1) (h2: S1 ⊆ S2): memory_set F S2 := by
+def memory_set_incl {T X Y: Type} [Mul T] {F: (T → X) → T → Y} {S1 S2: Set T} (h1: memory_set F S1) (h2: S1 ⊆ S2): memory_set F S2 := by
   obtain ⟨f1, hf1⟩ := h1
   exists fun x => f1 (fun ⟨a, ha⟩ => x ⟨a, h2 ha⟩)
-
--- definition of sliding block code: there exists a finite memory set
--- todo: generalize to shift spaces besides the full shit spaces
-def sliding_block_code {T X Y: Type} [Mul T] (F: (T → X) → T → Y): Prop :=
-  ∃ S: Set T, Finite S ∧ memory_set F S
-
-def equivariant {T X Y: Type} [Mul T] (F: (T → X) → T → Y): Prop :=
-  ∀ u: T → X, ∀ t: T, F (shift t u) = shift t (F u)
-
-def equivariant_compose {T X Y Z: Type} [Mul T]
-  {F1: (T → X) → T → Y} {F2: (T → Y) → T → Z}
-  (h1: equivariant F1) (h2: equivariant F2):
-  equivariant (F2 ∘ F1) := by
-  simp [equivariant]
-  intros
-  rw [h1, h2]
-
-lemma leftMul_comp {T: Type} [Semigroup T] {t1 t2: T}: leftMul t1 ∘ leftMul t2 = leftMul (t1 * t2) := by
-  ext
-  simp [leftMul, mul_assoc]
-
-
-lemma shift_comp {A T: Type} [Mul T] {t1 t2: T}:
-  ∀ x: T → A, (shift t1 ∘ shift t2) x = shift (t1 * t2) x := by
-  sorry
-
-theorem sliding_block_equivariant {T X Y: Type} [Semigroup T] {F: (T → X) → T → Y} (h: sliding_block_code F): equivariant F := by
-  sorry
 
 def setMul [Mul T] (S1 S2: Set T) : Set T :=
   (Set.image2 fun t1 t2 => t1 * t2) S1 S2
@@ -142,9 +152,20 @@ theorem memory_set_eq {T X Y: Type} [Mul T]
   assumption
   exists t'
 
-lemma shift_one {T X: Type} {u: T → X} [Monoid T]: shift 1 u = u := by
-  ext
-  simp [shift, leftMul]
+-- definition of sliding block code: there exists a finite memory set
+-- todo: generalize to shift spaces besides the full shit spaces
+def sliding_block_code {T X Y: Type} [Mul T] (F: (T → X) → T → Y): Prop :=
+  ∃ S: Set T, Finite S ∧ memory_set F S
+
+theorem equivariant_compose {T X Y Z: Type} [Mul T] {F1: (T → X) → T → Y} {F2: (T → Y) → T → Z} (h1: equivariant F1) (h2: equivariant F2): equivariant (F2 ∘ F1) := by
+  simp [equivariant]
+  intros
+  rw [h1, h2]
+
+theorem sliding_block_equivariant {T X Y: Type} [Semigroup T] {F: (T → X) → T → Y} (h: sliding_block_code F): equivariant F := by
+  obtain ⟨_, _, hS2⟩ := h
+  obtain ⟨_, hf⟩ := hS2
+  exact local_map_equivariant hf
 
 lemma eval_at_one {T X Y: Type} [Monoid T] {F: (T → X) → T → Y}
   (u: T → X) (t: T) (h: equivariant F): F u t = F (shift t u) 1 := by
@@ -154,7 +175,7 @@ lemma eval_at_one {T X Y: Type} [Monoid T] {F: (T → X) → T → Y}
 -- f is a local map for F iff. F is equivariant and ∀ x, F(x)(1) = f (x|S)
 theorem local_map_iff {T X Y: Type} [Monoid T]
   {F: (T → X) → T → Y} {S: Set T} (hS: Finite S) (f: (S → X) → Y):
-  local_map F f ↔ equivariant F ∧ ∀ u: T → X, F u 1 = f (Set.restrict S u) := by
+  local_map F f ↔ equivariant F ∧ ∀ u, F u 1 = f (S.restrict u) := by
   constructor
   . intro h
     have h1: sliding_block_code F := by
@@ -171,8 +192,10 @@ theorem local_map_iff {T X Y: Type} [Monoid T]
     rw [←h2 (shift g x), h1]
     simp [shift, leftMul]
 
--- composition of two sliding block codes is a sliding block code
-theorem sliding_block_compose {G A B C: Type} [Mul G]
+-- if F1 has memory set S1
+-- and F2 has memory set S2
+-- then F2 ∘ F1 has memory set S1 * S2
+theorem memory_set_compose {G A B C: Type} [Mul G]
   {F1: (G → A) → G → B} {F2: (G → B) → G → C}
   {S1 S2: Set G} (h1: memory_set F1 S1) (h2: memory_set F2 S2):
   memory_set (F2 ∘ F1) (setMul S1 S2) := by
@@ -186,32 +209,32 @@ theorem sliding_block_code_continuous {T X Y: Type} [Monoid T] [TopologicalSpace
   {F: (T → X) → T → Y} (h: sliding_block_code F): Continuous F := by
   apply continuous_of_neighborhood_continuous.mpr
   intro u V hV
-  obtain ⟨Ω, hΩ1, hΩ2⟩ := neighbor_lemma hV
+  obtain ⟨Ω, hΩ1, hΩ2⟩ := exists_finite_eqOn_nhd hV
   let ⟨S, hS1, hS2⟩ := h
   let ΩS := setMul Ω S
-  exists neighbors u ΩS
+  exists eqOn_nhd u ΩS
   apply And.intro
-  apply neighbors_is_nhd u ΩS
+  apply eqOn_nhd_is_nhd u ΩS
   apply Set.Finite.image2
   exact hΩ1
   exact hS1
-  have h1: Set.image F (neighbors u ΩS) ⊆ neighbors (F u) Ω := by
+  have h1: Set.image F (eqOn_nhd u ΩS) ⊆ eqOn_nhd (F u) Ω := by
     intro Fy hFy
-    simp [neighbors] at hFy
+    simp [eqOn_nhd] at hFy
     obtain ⟨v, hv1, hv2⟩ := hFy
-    simp [neighbors, ←hv2]
+    simp [eqOn_nhd, ←hv2]
     exact memory_set_eq hS2 hv1
   exact le_trans h1 hΩ2
 
 -- helper lemmas
 theorem exists_neighbor_eqAt_one {T X Y: Type} [TopologicalSpace X] [DiscreteTopology X] [TopologicalSpace Y] [DiscreteTopology Y] [Monoid T] {F: (T → X) → T → Y} (h: Continuous F):
-  ∀ u: T → X, ∃ Ω: Set T, Finite Ω ∧ ∀ v: T → X, v ∈ neighbors u Ω → F u 1 = F v 1 := by
+  ∀ u: T → X, ∃ Ω: Set T, Finite Ω ∧ ∀ v: T → X, v ∈ eqOn_nhd u Ω → F u 1 = F v 1 := by
     let φ := proj 1 ∘ F
     have hφ : Continuous φ := Continuous.comp (continuous_apply 1) h
     intro u
     have hU: {φ u} ∈ nhds (φ u) := by simp
     obtain ⟨V, hV1, hV2⟩ := continuous_of_neighborhood_continuous.mp hφ u {φ u} hU
-    have h4 := (neighbors_forms_neighborhood_base u).2
+    have h4 := (eqOn_nhd_forms_neighborhood_base u).right
     specialize h4 V hV1
     obtain ⟨U, hU1, hU2⟩ := h4
     simp_all
@@ -249,19 +272,18 @@ theorem exists_local_map {X Y Z: Type} {F: (X → Y) → Z} {S: Set X} [Nonempty
   rw [←Set.restrict_eq_restrict_iff, hG (S.restrict u)]
 
 -- if X is nonempty and finite and F: (T → X) → T → Y is continuous and equivariant then it is a sliding block
-theorem sliding_block_code_of_continuous_and_equivariant {T X Y: Type} [Monoid T] [Finite X] [Nonempty X] [TopologicalSpace X] [DiscreteTopology X] [TopologicalSpace Y] [DiscreteTopology Y] {F: (T → X) → T → Y}
-  (h1: Continuous F) (h2: equivariant F): sliding_block_code F := by
-  have h3: ∃ Ω: (T → X) → Set T, ∀ u: T → X, Finite (Ω u) ∧ ∀ v: T → X, v ∈ neighbors u (Ω u) → F u 1 = F v 1 := by
+theorem sliding_block_code_of_continuous_and_equivariant {T X Y: Type} [Monoid T] [Finite X] [Nonempty X] [TopologicalSpace X] [DiscreteTopology X] [TopologicalSpace Y] [DiscreteTopology Y] {F: (T → X) → T → Y} (h1: Continuous F) (h2: equivariant F): sliding_block_code F := by
+  have h3: ∃ Ω: (T → X) → Set T, ∀ u: T → X, Finite (Ω u) ∧ ∀ v: T → X, v ∈ eqOn_nhd u (Ω u) → F u 1 = F v 1 := by
     exists fun u => Classical.choose (exists_neighbor_eqAt_one h1 u)
     exact fun u => Classical.choose_spec (exists_neighbor_eqAt_one h1 u)
   obtain ⟨Ω, hΩ⟩ := h3
   have h4 : ∀ u, Finite (Ω u) := fun u => (hΩ u).left
-  have h5 : Set.univ ⊆ ⋃ u, neighbors u (Ω u) := by
+  have h5 : Set.univ ⊆ ⋃ u, eqOn_nhd u (Ω u) := by
     intro u _
     simp
     exists u
-    apply neighbors_self u
-  obtain ⟨C, hC⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun u => neighbors u (Ω u)) (fun u => neighbors_open u (Ω u) (h4 u)) h5
+    apply eqOn_nhd_self u
+  obtain ⟨C, hC⟩ := IsCompact.elim_finite_subcover CompactSpace.isCompact_univ (fun u => eqOn_nhd u (Ω u)) (fun u => eqOn_nhd_open u (Ω u) (h4 u)) h5
   simp at hC
   let S := Set.sUnion (Set.image Ω C)
   exists S
@@ -275,7 +297,7 @@ theorem sliding_block_code_of_continuous_and_equivariant {T X Y: Type} [Monoid T
     exact h4 x
   constructor
   exact hS
-  have h7: ∀ x: T → X, ∃ x0 ∈ C, x ∈ neighbors x0 (Ω x0) := by
+  have h7: ∀ x: T → X, ∃ x0 ∈ C, x ∈ eqOn_nhd x0 (Ω x0) := by
     apply Set.exists_set_mem_of_union_eq_top
     apply Set.eq_univ_of_univ_subset
     simp
@@ -297,12 +319,8 @@ theorem sliding_block_code_of_continuous_and_equivariant {T X Y: Type} [Monoid T
 Curtis-Hedlund-Lyndon theorem:
 If A is finite then a map F: (G → A) → (G → A) is a sliding block code iff. it is both equivariant and continuous
 -/
-theorem curtis_hedlund_lyndon {G A: Type} [Monoid G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
-  (F: (G → A) → G → B):
-  sliding_block_code F ↔ (Continuous F ∧ equivariant F) := by
-  constructor
-  exact fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩
-  exact fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2
+theorem curtis_hedlund_lyndon {G A: Type} [Monoid G] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] (F: (G → A) → G → B): sliding_block_code F ↔ (Continuous F ∧ equivariant F) :=
+  ⟨fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩, fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2⟩
 
 -- uniform space
 instance {G A: Type} [UniformSpace A]:
@@ -332,13 +350,8 @@ class Subshift {M A: Type} [Mul M] [TopologicalSpace A] (S: Set (M → A)): Prop
 
 export Subshift (closed shift_invariant)
 
--- TODO: characterize subshift in terms of "forbidden blocks"
-
-@[simp]
-def empty (A: Type): Set A := ∅
-
 theorem Subshift_empty {M A: Type} [Mul M] [TopologicalSpace A]:
-  Subshift (empty (M → A)) := by
+  Subshift (∅: Set (M → A)) := by
   constructor <;> simp
 
 theorem Subshift_univ {M A: Type} [Mul M] [TopologicalSpace A]:
@@ -383,7 +396,6 @@ theorem Subshift_iUnion {M A: Type} [Mul M] [TopologicalSpace A] [DiscreteTopolo
   sorry
 
 -- the preimage of a subshift under a sliding block code is a subshift
-
 -- may hold when A is not necessarily finite
 theorem Subshift_preimage {M A B: Type} [Monoid M] [Nonempty A] [Finite A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
   (F: (M → A) → (M → B)) (h: sliding_block_code F) (Λ2: Set (M → B)) [Subshift Λ2]:
@@ -401,6 +413,8 @@ theorem Subshift_preimage {M A B: Type} [Monoid M] [Nonempty A] [Finite A] [Topo
   rw [hF2]
   exact shift_invariant (F x) hx g
   -/
+
+-- the image of a subshift under a sliding block is a subshift
 theorem Subshift_image {M A B: Type} [Monoid M] [Nonempty A] [Finite A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
   (F: (M → A) → (M → B)) (h: sliding_block_code F) (Λ1: Set (M → A)) [Subshift Λ1]:
     Subshift (Set.image F Λ1) := by
