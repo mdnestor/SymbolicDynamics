@@ -27,26 +27,30 @@ import Mathlib.Topology.Perfect
 -- import Mathlib.Topology.Metrizable.Urysohn -- this introduces a lot of imports
 
 -- the prodiscrete topology is the product of discrete spaces via the Π construction
-instance prodiscrete_space (G A: Type) [TopologicalSpace A] [DiscreteTopology A]: TopologicalSpace (G → A) :=
+/-
+instance prodiscrete_space (G A: Type*) [TopologicalSpace A] [DiscreteTopology A]: TopologicalSpace (G → A) :=
   Pi.topologicalSpace
+-/
+
+variable {A T: Type*}
 
 -- prodiscrete space is T0
-instance prodiscrete_T0 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  T0Space (G → A) := by
+instance prodiscrete_T0 [TopologicalSpace A] [DiscreteTopology A]:
+  T0Space (T → A) := by
   exact Pi.instT0Space
 
 -- prodiscrete space is T2 (Hausdorff)
-instance prodiscrete_T2 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  T2Space (G → A) :=
+instance prodiscrete_T2 [TopologicalSpace A] [DiscreteTopology A]:
+  T2Space (T → A) :=
   Pi.t2Space
 
 -- prodiscrete space is totally disconnceted
-theorem prodiscrete_totally_disconnected {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  TotallyDisconnectedSpace (G → A) :=
+theorem prodiscrete_totally_disconnected [TopologicalSpace A] [DiscreteTopology A]:
+  TotallyDisconnectedSpace (T → A) :=
   Pi.totallyDisconnectedSpace
 
 -- discrete topology is regular
-instance {A: Type} [TopologicalSpace A] [DiscreteTopology A]:
+instance [TopologicalSpace A] [DiscreteTopology A]:
   RegularSpace A := by
   apply RegularSpace.of_exists_mem_nhds_isClosed_subset
   intro x U hU
@@ -58,89 +62,89 @@ instance {A: Type} [TopologicalSpace A] [DiscreteTopology A]:
   rfl
 
 -- the prodiscrete topology is regular
-instance {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  RegularSpace (G → A) :=
+instance [TopologicalSpace A] [DiscreteTopology A]:
+  RegularSpace (T → A) :=
   instRegularSpaceForall
 
-theorem prodiscrete_T3 {G A: Type} [TopologicalSpace A] [DiscreteTopology A]:
-  T3Space (G → A) := by
+theorem prodiscrete_T3 [TopologicalSpace A] [DiscreteTopology A]:
+  T3Space (T → A) := by
   apply RegularSpace.t3Space_iff_t0Space.mpr
   exact prodiscrete_T0
 
 /-
 -- prodiscrete space is metrizable
-theorem prodiscrete_metrizable {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
-  TopologicalSpace.MetrizableSpace (G → A) :=
+theorem prodiscrete_metrizable [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
+  TopologicalSpace.MetrizableSpace (T → A) :=
   TopologicalSpace.metrizableSpace_of_t3_second_countable
 -/
 
 -- if A is finite then A^G is compact
-theorem prodiscrete_compact {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
-  CompactSpace (G → A) :=
+theorem prodiscrete_compact [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
+  CompactSpace (T → A) :=
   Pi.compactSpace
 
 /-
-theorem prodiscrete_perfect {G A: Type} [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
-  PerfectSpace (G → A) := by
+theorem prodiscrete_perfect [TopologicalSpace A] [DiscreteTopology A] [Finite A]:
+  PerfectSpace (T → A) := by
   sorry
 -/
 
 -- projection map
-def proj {G A: Type} (g: G): (G → A) → A :=
-  fun x: G → A => x g
+def proj (t: T): (T → A) → A :=
+  fun x => x t
 
-def cylinder {G A: Type} (g: G) (U: Set A): Set (G → A) :=
-  Set.preimage (proj g) U
+def cylinder (t: T) (U: Set A): Set (T → A) :=
+  Set.preimage (proj t) U
 
-def elt_cylinder {G A: Type} (g: G) (x: A): Set (G → A) :=
-  cylinder g {x}
+def elt_cylinder (t: T) (x: A): Set (T → A) :=
+  cylinder t {x}
 
-theorem elt_cylinder_eq {G A: Type} (g: G) (a: A):
-  cylinder g {a} = {x: G → A | x g = a} := rfl
+theorem elt_cylinder_eq (t: T) (a: A):
+  cylinder t {a} = {x: T → A | x t = a} := rfl
 
-theorem cylinder_open {G A: Type} [TopologicalSpace A] (g: G) {U: Set A} (h: IsOpen U):
-  IsOpen (cylinder g U) := by
+theorem cylinder_open [TopologicalSpace A] (t: T) {U: Set A} (h: IsOpen U):
+  IsOpen (cylinder t U) := by
   apply Continuous.isOpen_preimage
-  exact continuous_apply g
+  exact continuous_apply t
   exact h
 
 -- every cylinder in the prodiscrete topology is open
-theorem prodiscrete_cylinder_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
-  (g: G) (U: Set A): IsOpen (cylinder g U) := by
+theorem prodiscrete_cylinder_open [TopologicalSpace A] [DiscreteTopology A]
+  (t: T) (U: Set A): IsOpen (cylinder t U) := by
   simp [cylinder_open]
 
-theorem cylinder_subset {G A: Type} (g: G) {U1: Set A} {U2: Set A} (h: U1 ⊆ U2):
+theorem cylinder_subset {G A: Type*} (g: G) {U1: Set A} {U2: Set A} (h: U1 ⊆ U2):
   cylinder g U1 ⊆ cylinder g U2 := by
   intro _ ha
   simp_all [cylinder, proj]
   exact h ha
 
 /-
-theorem cylinder_closed {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (U: Set A):
+theorem cylinder_closed {G A: Type*} [TopologicalSpace A] [DiscreteTopology A] (g: G) (U: Set A):
   IsClosed (cylinder g U) := by
   sorry
 
-theorem cylinder_clopen {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (g: G) (U: Set A): IsClopen (cylinder g U) :=
+theorem cylinder_clopen {G A: Type*} [TopologicalSpace A] [DiscreteTopology A] (g: G) (U: Set A): IsClopen (cylinder g U) :=
   ⟨cylinder_closed g U, cylinder_open g U⟩
 -/
 
 -- the set of cylinders
 @[simp]
-def cylinders (X I: Type) [TopologicalSpace X]: Set (Set (I → X)) :=
+def cylinders (X I: Type*) [TopologicalSpace X]: Set (Set (I → X)) :=
   {C: Set (I → X) | ∃ i: I, ∃ U: Set X, IsOpen U ∧ C = cylinder i U}
 
 -- the set of elementary cylinders
 @[simp]
-def elt_cylinders (X I: Type): Set (Set (I → X)) :=
+def elt_cylinders (X I: Type*): Set (Set (I → X)) :=
   {C: Set (I → X) | ∃ i: I, ∃ x: X, C = cylinder i {x}}
 
 -- the set of "square cylinders"
 @[simp]
-def square_cylinders (X I: Type) [TopologicalSpace X]: Set (Set (I → X)) :=
+def square_cylinders (X I: Type*) [TopologicalSpace X]: Set (Set (I → X)) :=
   {C | ∃ U: I → Set X, ∃ ι: Finset I, (∀ i ∈ ι, IsOpen (U i)) ∧ C = (Finset.toSet ι).pi U}
 
 -- every cylinder is a union of elementary cylinders
-theorem cylinder_union_of_elt_cylinders {X I: Type} [TopologicalSpace X]
+theorem cylinder_union_of_elt_cylinders {X I: Type*} [TopologicalSpace X]
   {C: Set (I → X)} (h: C ∈ cylinders X I):
   ∃ i: I, ∃ U: Set X, C = ⋃ x ∈ U, cylinder i {x} := by
   simp at h
@@ -149,7 +153,7 @@ theorem cylinder_union_of_elt_cylinders {X I: Type} [TopologicalSpace X]
   simp [hC.right, cylinder]
 
 -- every square cylinder is a finite intersection of cylinders
-theorem square_cylinder_intersection_of_cylinders {X I: Type} [TopologicalSpace X]
+theorem square_cylinder_intersection_of_cylinders {X I: Type*} [TopologicalSpace X]
   {S: Set (I → X)} (h: S ∈ square_cylinders X I):
   ∃ ι: Finset I, ∃ U: ι → Set X, (∀ i: ι, IsOpen (U i)) ∧ S = Set.iInter (fun i: ι => cylinder (↑i) (U i)) := by
   obtain ⟨U, ι, h1, h2⟩ := h
@@ -164,7 +168,7 @@ theorem square_cylinder_intersection_of_cylinders {X I: Type} [TopologicalSpace 
   rfl
 
 -- if X is discrete then the product topology on X^I is coarser than the topology generated by elementary cylinders
-theorem pi_le_generateFrom_elt_cylinders {X I: Type} [TopologicalSpace X] [DiscreteTopology X]:
+theorem pi_le_generateFrom_elt_cylinders {X I: Type*} [TopologicalSpace X] [DiscreteTopology X]:
   Pi.topologicalSpace ≤ TopologicalSpace.generateFrom (elt_cylinders X I) := by
   apply le_generateFrom
   intro C hC
@@ -174,7 +178,7 @@ theorem pi_le_generateFrom_elt_cylinders {X I: Type} [TopologicalSpace X] [Discr
   simp
 
 -- if X is discrete then the topology generated by elementary cylinders is coarse than the topology generated by open cylinders
-theorem pi_generateFrom_cylinders_le_generateFrom_elt_cylinders {X I: Type} [TopologicalSpace X] [DiscreteTopology X]:
+theorem pi_generateFrom_cylinders_le_generateFrom_elt_cylinders {X I: Type*} [TopologicalSpace X] [DiscreteTopology X]:
   TopologicalSpace.generateFrom (elt_cylinders X I) ≤ TopologicalSpace.generateFrom (cylinders X I) := by
   apply le_generateFrom
   intro C hC
@@ -187,7 +191,7 @@ theorem pi_generateFrom_cylinders_le_generateFrom_elt_cylinders {X I: Type} [Top
   sorry
 
 -- the product topology is coarser than the topology generated by cylinders
-theorem pi_le_generateFrom_cylinders {X I: Type} [TopologicalSpace X]:
+theorem pi_le_generateFrom_cylinders {X I: Type*} [TopologicalSpace X]:
   Pi.topologicalSpace ≤ TopologicalSpace.generateFrom (cylinders X I) := by
   apply le_generateFrom
   simp
@@ -196,7 +200,7 @@ theorem pi_le_generateFrom_cylinders {X I: Type} [TopologicalSpace X]:
   exact cylinder_open i hU
 
 -- the topology generated by cylinders is coarser than the product topology
- theorem generateFrom_cylinders_le_pi {X I: Type} [TopologicalSpace X]:
+ theorem generateFrom_cylinders_le_pi {X I: Type*} [TopologicalSpace X]:
   TopologicalSpace.generateFrom (cylinders X I) ≤ Pi.topologicalSpace := by
   rw [pi_eq_generateFrom, cylinders]
   apply le_generateFrom
@@ -212,12 +216,12 @@ theorem pi_le_generateFrom_cylinders {X I: Type} [TopologicalSpace X]:
   rfl
 
 -- the product space is generated by cylinders
-theorem pi_generateFrom_cylinders (X I: Type) [TopologicalSpace X]:
+theorem pi_generateFrom_cylinders (X I: Type*) [TopologicalSpace X]:
   Pi.topologicalSpace = TopologicalSpace.generateFrom (cylinders X I) :=
   le_antisymm pi_le_generateFrom_cylinders generateFrom_cylinders_le_pi
 
 -- if X is discrete then the product space is generated by elementary cylinders
-theorem pi_generateFrom_elt_cylinders (X I: Type) [TopologicalSpace X] [DiscreteTopology X]:
+theorem pi_generateFrom_elt_cylinders (X I: Type*) [TopologicalSpace X] [DiscreteTopology X]:
   Pi.topologicalSpace = TopologicalSpace.generateFrom (elt_cylinders X I) := by
   apply le_antisymm pi_le_generateFrom_elt_cylinders
   apply le_trans pi_generateFrom_cylinders_le_generateFrom_elt_cylinders
@@ -225,7 +229,7 @@ theorem pi_generateFrom_elt_cylinders (X I: Type) [TopologicalSpace X] [Discrete
 
 -- neighborhood definition of continuity
 -- TODO: replace with mathlib definition
-theorem continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y}:
+theorem continuous_of_neighborhood_continuous {X Y: Type*} [TopologicalSpace X] [TopologicalSpace Y] {f: X → Y}:
   Continuous f ↔ (∀ x: X, ∀ V ∈ nhds (f x), ∃ U ∈ nhds x, Set.image f U ⊆ V) := by
   constructor
   intro h x V hV
@@ -244,28 +248,28 @@ theorem continuous_of_neighborhood_continuous {X Y: Type} [TopologicalSpace X] [
   simp at hU2
   exact Filter.mem_of_superset hU1 hU2
 
-def eqOn_nhd {G A: Type} (x: G → A) (Ω: Set G): Set (G → A) :=
+def eqOn_nhd {G A: Type*} (x: G → A) (Ω: Set G): Set (G → A) :=
   {y | Set.EqOn x y Ω}
 
 -- if Ω1 ⊆ Ω2 then eqOn_nhd(x, Ω1) ⊇ eqOn_nhd(x, Ω2)
-theorem eqOn_nhd_incl {G A: Type} (x: G → A) {Ω1: Set G} {Ω2: Set G} (h: Ω1 ⊆ Ω2):
+theorem eqOn_nhd_incl {G A: Type*} (x: G → A) {Ω1: Set G} {Ω2: Set G} (h: Ω1 ⊆ Ω2):
   eqOn_nhd x Ω2 ⊆ eqOn_nhd x Ω1 :=
   fun _ hy _ hg => hy (h hg)
 
 -- eqOn_nhd(x, G) = {x}
-theorem eqOn_nhd_univ {G A: Type} (x: G → A): eqOn_nhd x Set.univ = {x} := by
+theorem eqOn_nhd_univ {G A: Type*} (x: G → A): eqOn_nhd x Set.univ = {x} := by
   simp [eqOn_nhd]
 
 -- eqOn_nhd(x, ∅) = G → A
-theorem eqOn_nhd_empty {G A: Type} (x: G → A): eqOn_nhd x ∅ = Set.univ := by
+theorem eqOn_nhd_empty {G A: Type*} (x: G → A): eqOn_nhd x ∅ = Set.univ := by
   simp [eqOn_nhd]
 
 -- x ∈ eqOn_nhd(x, Ω)
-theorem eqOn_nhd_self {G A: Type} (x: G → A) (Ω: Set G): x ∈ eqOn_nhd x Ω := by
+theorem eqOn_nhd_self {G A: Type*} (x: G → A) (Ω: Set G): x ∈ eqOn_nhd x Ω := by
   simp [eqOn_nhd, Set.EqOn]
 
 -- eqOn_nhd(x, Ω) is equal to the intersection of all cylinders of the form C(g, x(g)) for g ∈ Ω
-theorem eqOn_nhd_cylinder_eq {G A: Type} (x: G → A) (Ω: Set G):
+theorem eqOn_nhd_cylinder_eq {G A: Type*} (x: G → A) (Ω: Set G):
   eqOn_nhd x Ω = Set.sInter (Set.image (fun g => cylinder g {x g}) Ω) := by
   simp [cylinder, eqOn_nhd, Set.EqOn]
   ext
@@ -276,7 +280,7 @@ theorem eqOn_nhd_cylinder_eq {G A: Type} (x: G → A) (Ω: Set G):
   · intros
     simp_all [proj]
 
-theorem eqOn_nhd_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
+theorem eqOn_nhd_open {G A: Type*} [TopologicalSpace A] [DiscreteTopology A]
   (x: G → A) (Ω: Set G) (h: Finite Ω): IsOpen (eqOn_nhd x Ω) := by
   rw [eqOn_nhd_cylinder_eq]
   apply Set.Finite.isOpen_sInter
@@ -289,27 +293,27 @@ theorem eqOn_nhd_open {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
   apply cylinder_open
   simp
 
-theorem eqOn_nhd_is_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
+theorem eqOn_nhd_is_nhd {G A: Type*} [TopologicalSpace A] [DiscreteTopology A]
   (x: G → A) (Ω: Set G) (h: Finite Ω):
   eqOn_nhd x Ω ∈ nhds x := by
   exact IsOpen.mem_nhds (eqOn_nhd_open x Ω h) (eqOn_nhd_self x Ω)
 
 -- TODO: replace with mathlib definition
-def neighborhood_base {X: Type} [TopologicalSpace X] (x: X) (B: Set (Set X)): Prop :=
+def neighborhood_base {X: Type*} [TopologicalSpace X] (x: X) (B: Set (Set X)): Prop :=
   B ⊆ (nhds x).sets ∧ ∀ V ∈ nhds x, ∃ U ∈ B, U ⊆ V
 
-theorem cylinder_imply_singleton_mem {X Y: Type} {x: X} {u: X → Y} {U: Set Y}
+theorem cylinder_imply_singleton_mem {X Y: Type*} {x: X} {u: X → Y} {U: Set Y}
   (h: u ∈ cylinder x U): {u x} ⊆ U := by
   simp
   exact h
 
-theorem eqOn_nhd_singleton_subset_cylinder {X Y: Type} {x: X} {u: X → Y} {U: Set Y}
+theorem eqOn_nhd_singleton_subset_cylinder {X Y: Type*} {x: X} {u: X → Y} {U: Set Y}
   (h: u ∈ cylinder x U): eqOn_nhd u {x} ⊆ cylinder x U := by
   rw [eqOn_nhd_cylinder_eq]
   simp
   exact cylinder_subset x (cylinder_imply_singleton_mem h)
 
-theorem lemma0 {X Y Z: Type} {f: X → Y → Z} {S: Set Z}
+theorem lemma0 {X Y Z: Type*} {f: X → Y → Z} {S: Set Z}
   (h2: S ⊆ {z | ∃ x y, z = f x y}):
   ∃ p: S → X × Y, ∀ z: S, f (p z).1 (p z).2 = z := by
   let p: S → X × Y := by
@@ -329,14 +333,14 @@ theorem lemma0 {X Y Z: Type} {f: X → Y → Z} {S: Set Z}
   let h5 := Classical.choose_spec h4
   rw [← h5]
 
-theorem lemma1 {X Y Z: Type} {f: X → Y → Z} {S: Set Z}
+theorem lemma1 {X Y Z: Type*} {f: X → Y → Z} {S: Set Z}
   (h2: S ⊆ {z | ∃ x y, z = f x y}):
   ∃ p1: S → X, ∃ p2: S → Y, ∀ z: S, f (p1 z) (p2 z) = z := by
   obtain ⟨p, hp⟩ := lemma0 h2
   exists fun z => (p z).1
   exists fun z => (p z).2
 
-theorem lemma2 {A B C: Type} {f: A → B → Set C} {X: Set (Set C)} (h1: Finite X) (h2: X ⊆ {C | ∃ x y, C = f x y}):
+theorem lemma2 {A B C: Type*} {f: A → B → Set C} {X: Set (Set C)} (h1: Finite X) (h2: X ⊆ {C | ∃ x y, C = f x y}):
   ∃ p: Set (A × B), p.Finite ∧ X = Set.image (fun (x, y) => f x y) p := by
   have h1 : ∃ pick_x : X → A, ∃ pick_y : X → B,
     ∀ c : X, f (pick_x c) (pick_y c) = c := lemma1 h2
@@ -395,7 +399,7 @@ Proof idea:
            = B
            ⊆ N
 -/
-theorem eqOn_nhd_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [DiscreteTopology A] (x: G → A):
+theorem eqOn_nhd_forms_neighborhood_base {G A: Type*} [TopologicalSpace A] [DiscreteTopology A] (x: G → A):
   neighborhood_base x {U: Set (G → A) | ∃ Ω: Set G, Finite Ω ∧ U = eqOn_nhd x Ω } := by
   constructor
   . intro U hU
@@ -437,7 +441,7 @@ theorem eqOn_nhd_forms_neighborhood_base {G A: Type} [TopologicalSpace A] [Discr
 
 -- let x: G → A and let U be a neighborhood of x
 -- then there exists finite Ω ⊆ G such that eqOn_nhd(x, Ω) ⊆ U
-theorem exists_finite_eqOn_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopology A]
+theorem exists_finite_eqOn_nhd {G A: Type*} [TopologicalSpace A] [DiscreteTopology A]
   {U: Set (G → A)} {x: G → A} (h: U ∈ nhds x):
   ∃ Ω: Set G, Finite Ω ∧ eqOn_nhd x Ω ⊆ U := by
   have := eqOn_nhd_forms_neighborhood_base x
@@ -448,3 +452,91 @@ theorem exists_finite_eqOn_nhd {G A: Type} [TopologicalSpace A] [DiscreteTopolog
   exact hΩ1
   rw [←hΩ2]
   exact hV2
+
+def eqOn_entourage {A T: Type*} (Ω: Set T): Set ((T → A) × (T → A)) :=
+  {(x, y)| Set.EqOn x y Ω}
+
+theorem eqOn_entourage_subset {A T: Type*} {Ω1 Ω2: Set T} (h: Ω1 ⊆ Ω2): @eqOn_entourage A T Ω2 ⊆ @eqOn_entourage A T Ω1 := by
+  intro (x, y) hxy
+  exact Set.EqOn.mono h hxy
+
+theorem eqOn_entourage_inter {A T: Type*} (Ω1 Ω2: Set T):
+  @eqOn_entourage A T Ω1 ∩ @eqOn_entourage A T Ω2 = @eqOn_entourage A T (Ω1 ∪ Ω2) := by
+  apply Set.Subset.antisymm_iff.mpr
+  constructor
+  intro _ h
+  exact Set.EqOn.union h.left h.right
+  apply Set.subset_inter
+  exact eqOn_entourage_subset Set.subset_union_left
+  exact eqOn_entourage_subset Set.subset_union_right
+
+def eqOn_finite_entourages {A T: Type*}: Set (Set ((T → A) × (T → A))) :=
+  {W | ∃ Ω: Set T, Finite Ω ∧ eqOn_entourage Ω = W}
+
+theorem eqOn_finite_entourages_refl {A T: Type*}:
+  ∀ W ∈ eqOn_finite_entourages, ∀ x : T → A, (x, x) ∈ W := by
+  intro W hW x
+  obtain ⟨Ω, hΩ⟩ := hW
+  rw [←hΩ.right]
+  exact Set.eqOn_refl x Ω
+
+theorem eqOn_entourage_swap_eq {A T: Type*} (Ω: Set T):
+  @eqOn_entourage A T Ω = Prod.swap ⁻¹' (eqOn_entourage Ω) := by
+  ext
+  exact Set.eqOn_comm
+
+theorem eqOn_finite_entourages_symm {A T: Type*}:
+  ∀ W ∈ @eqOn_finite_entourages A T, ∃ U ∈ eqOn_finite_entourages, U ⊆ Prod.swap ⁻¹' W := by
+  intro W hW
+  exists W
+  constructor
+  exact hW
+  obtain ⟨Ω, hΩ⟩ := hW
+  rw [←hΩ.right]
+  exact (Set.Subset.antisymm_iff.mp (eqOn_entourage_swap_eq Ω)).left
+
+theorem eqOn_entourage_comp_eq {A T: Type*} (Ω: Set T):
+  compRel (@eqOn_entourage A T Ω) (eqOn_entourage Ω) = eqOn_entourage Ω := by
+  apply Set.Subset.antisymm_iff.mpr
+  constructor
+  . intro ⟨x, z⟩ h
+    obtain ⟨y, hy⟩ := h
+    simp at hy
+    exact Set.EqOn.trans hy.left hy.right
+  . intro ⟨x, z⟩ h
+    exists x
+    exact ⟨Set.eqOn_refl x Ω, h⟩
+
+theorem eqOn_finite_entourages_comp {A T: Type*}:
+  ∀ W ∈ @eqOn_finite_entourages A T, ∃ U ∈ eqOn_finite_entourages, compRel U U ⊆ W := by
+  intro W hW
+  exists W
+  constructor
+  exact hW
+  obtain ⟨Ω, hΩ⟩ := hW
+  rw [←hΩ.right]
+  exact (Set.Subset.antisymm_iff.mp (eqOn_entourage_comp_eq Ω)).left
+
+def eqOn_finite_entourages_filter_base {A T: Type*}: FilterBasis ((T → A) × (T → A)) := {
+  sets := eqOn_finite_entourages
+  nonempty := sorry
+  inter_sets := by
+    intro U V hU hV
+    obtain ⟨Ω, hΩ⟩ := hU
+    obtain ⟨Ω', hΩ'⟩ := hV
+    exists eqOn_entourage (Ω ∪ Ω')
+    constructor
+    exists Ω ∪ Ω'
+    constructor
+    exact Set.Finite.union hΩ.left hΩ'.left
+    rfl
+    rw [←hΩ.right, ←hΩ'.right]
+    exact (Set.Subset.antisymm_iff.mp (eqOn_entourage_inter Ω Ω')).right
+}
+
+def eqOn_finite_entourages_uniformSpace_core {A T: Type*}: UniformSpace.Core (T → A) :=
+  UniformSpace.Core.mkOfBasis
+    eqOn_finite_entourages_filter_base
+    eqOn_finite_entourages_refl
+    eqOn_finite_entourages_symm
+    eqOn_finite_entourages_comp
