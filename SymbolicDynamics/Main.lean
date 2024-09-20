@@ -14,8 +14,8 @@ Notation
 
 TODO:
 
+-- prove CHL theorem from the uniform variant (likely simpler proof)
 -- variant of CHL theorem for subshifts
--- CHL theorem for uniform structures
 -- characterize subshifts in terms of forbidden blocks
 -- shifts of finite type
 -- sofic shifts
@@ -58,12 +58,16 @@ variable {A B C T : Type*}
 def shift [Mul T] (t: T): (T → A) → (T → A) :=
   fun x => x ∘ leftMul t
 
+-- these could likely be compressed
 theorem shift_comp [Semigroup T] {x: T → A} {t1 t2: T}: shift t1 (shift t2 x) = shift (t2 * t1) x := by
   ext
   simp [shift, leftMul, mul_assoc]
 
 theorem shift_one {x: T → A} [MulOneClass T]: shift 1 x = x := by
   ext
+  simp [shift, leftMul]
+
+theorem shift_eq {x: T → A} {t: T} [MulOneClass T]: (shift t x) 1 = x t := by
   simp [shift, leftMul]
 
 theorem shift_preimage_cylinder_eq [Mul T] (t1 t2: T) (S: Set A):
@@ -311,24 +315,37 @@ If A is finite then a map F: (G → A) → (G → A) is a sliding block code iff
 theorem curtis_hedlund_lyndon [Monoid T] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] (F: (T → A) → T → B): sliding_block_code F ↔ (Continuous F ∧ equivariant F) :=
   ⟨fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩, fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2⟩
 
--- uniform space
-instance [UniformSpace A]: UniformSpace (T → A) :=
-  Pi.uniformSpace (fun _ => A)
+theorem uniform_continuous_of_sliding_block_code {A B T: Type*} [Mul T] [UniformSpace A] [UniformSpace B] [DiscreteUniformity A] [DiscreteUniformity B] {F: (T → A) → T → B} (h: sliding_block_code F): UniformContinuous F := by
+  apply prodiscrete_uniform_continuous_iff.mpr
+  intro Ω hΩ
+  obtain ⟨S, hS⟩ := h
+  exists setMul Ω S
+  constructor
+  apply Set.Finite.image2
+  exact hΩ
+  exact hS.left
+  simp
+  intro (x, y) hxy
+  simp_all [eqOn_entourage]
+  exact memory_set_eq hS.right hxy
 
-instance [UniformSpace A] (h: uniformity A = Filter.principal idRel): uniformity (T → A) = Filter.principal idRel := by
-  sorry
-
-theorem uniform_continuous_of_sliding_block_code [Group T] [UniformSpace A] [UniformSpace B] {F: (T → A) → T → B} (h: uniformity A = Filter.principal idRel) (h: sliding_block_code F): UniformContinuous F := by
-  sorry
-
-theorem sliding_block_code_of_uniform_continuous_and_equivariant [Group T] [UniformSpace A] [UniformSpace B] {F: (T → A) → T → B} (h: uniformity A = Filter.principal idRel) (h1: UniformContinuous F) (h2: equivariant F): sliding_block_code F := by
-  sorry
+theorem sliding_block_code_of_uniform_continuous_and_equivariant [MulOneClass T] [Nonempty A] [UniformSpace A] [DiscreteUniformity A] [UniformSpace B] [DiscreteUniformity B] {F: (T → A) → T → B} (h1: UniformContinuous F) (h2: equivariant F): sliding_block_code F := by
+  obtain ⟨S, hS⟩ := prodiscrete_uniform_continuous_iff.mp h1 {1} (Set.finite_singleton 1)
+  exists S
+  constructor
+  exact hS.left
+  simp [eqOn_entourage] at hS
+  obtain ⟨f, hf⟩ := exists_local_map hS.right
+  exists f
+  intro x t
+  rw [←hf (shift t x), h2]
+  simp [shift_eq]
 
 -- drops the finite assumption
-theorem curtis_hedlund_lyndon_uniform {G A: Type*} [Group G] [UniformSpace A] (h: uniformity A = Filter.principal idRel) (F: (G → A) → G → A): sliding_block_code F ↔ (UniformContinuous F ∧ equivariant F) := by
+theorem curtis_hedlund_lyndon_uniform {A B T: Type*} [Monoid T] [Nonempty A] [UniformSpace A] [DiscreteUniformity A] [UniformSpace B] [DiscreteUniformity B] (F: (T → A) → T → B): sliding_block_code F ↔ (UniformContinuous F ∧ equivariant F) := by
   apply Iff.intro
-  exact fun h1 => ⟨uniform_continuous_of_sliding_block_code h h1, sliding_block_equivariant h1⟩
-  exact fun ⟨h1, h2⟩ => sliding_block_code_of_uniform_continuous_and_equivariant h h1 h2
+  exact fun h => ⟨uniform_continuous_of_sliding_block_code h, sliding_block_equivariant h⟩
+  exact fun ⟨h1, h2⟩ => sliding_block_code_of_uniform_continuous_and_equivariant h1 h2
 
 class Subshift {M A: Type*} [Mul M] [TopologicalSpace A] (S: Set (M → A)): Prop where
   closed: IsClosed S
@@ -416,3 +433,42 @@ theorem Subshift_image {M A B: Type*} [Monoid M] [Nonempty A] [Finite A] [Topolo
   simp [shift]
   sorry
   -- rw [hF2, hy2]
+
+
+-- a "block" consists of a subset S ⊆ T and a function b: S → A
+
+-- a configuration x: T → A contains a block b if there exists t ∈ T such that
+-- S.restrict (shift t x) = f
+def contains_block [Mul T] (x: T → A) {S: Set T} (b: S → A): Prop :=
+  ∃ t: T, S.restrict (shift t x) = b
+
+-- suppose T is a group
+-- if x contains a block b then shift t x contains b
+def contains_block_shift [Group T] {x: T → A} {S: Set T} {b: S → A}
+  (h: contains_block x b) (t: T): contains_block (shift t x) b := by
+  obtain ⟨t', ht'⟩ := h
+  exists t⁻¹ * t'
+  simp [shift_comp]
+  exact ht'
+
+def shift_invariant_of_forbidden_words [Group T] [TopologicalSpace A] (Λ: Set (T → A)):
+  (∃ ι: Type, ∃ S: ι → Set T, ∃ b: (i: ι) → (S i → A), Λ = {x: T → A | ∀ i: ι, ¬ contains_block x (b i)})
+  → (∀ x ∈ Λ, ∀ t: T, shift t x ∈ Λ) := by
+  intro h
+  obtain ⟨ι, S, b, h1⟩ := h
+  intro x hx t
+  rw [h1]
+  intro i
+  simp [h1] at hx
+  specialize hx i
+  intro hx'
+  have := contains_block_shift hx' t⁻¹
+  simp [shift_comp, shift_one] at this
+  contradiction
+
+
+def subshift_iff [Mul T] [TopologicalSpace A] (Λ: Set (T → A)):
+  Subshift Λ ↔ ∃ ι: Type, ∃ S: ι → Set T, ∃ b: (i: ι) → (S i → A), Λ = {x: T → A | ∀ i: ι, ¬ contains_block x (b i)} := by
+  constructor
+  sorry
+  sorry
