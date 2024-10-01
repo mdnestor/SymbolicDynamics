@@ -10,7 +10,7 @@ Main reults:
 Notation
 -- A, B, C for alphabets, T for tape positions equipped with some algebraic structure
 -- results are general as possible, some use `MulOneClass` aka unital magma
--- x, y, z for tape configurations
+-- x, y, z: T → A for tape configurations
 
 TODO:
 
@@ -19,6 +19,7 @@ TODO:
 -- characterize subshifts in terms of forbidden blocks
 -- shifts of finite type
 -- sofic shifts
+-- some refactoring? instead of state a local map/memory set exists, simply provide evidence
 
 References:
 
@@ -47,62 +48,31 @@ import Mathlib.Topology.UniformSpace.Basic
 import Mathlib.Topology.UniformSpace.Pi
 import Mathlib.Topology.Separation
 import Mathlib.Topology.Connected.TotallyDisconnected
+import Mathlib.Topology.Algebra.MulAction
 
+import SymbolicDynamics.ShiftSpace
 import SymbolicDynamics.ProdiscreteTopology
 
 open Topology
 
 variable {A B C T : Type*}
 
--- results about the shift map
-def shift [Mul T] (t: T): (T → A) → (T → A) :=
-  fun x => x ∘ leftMul t
-
--- these could likely be compressed
-theorem shift_comp [Semigroup T] {x: T → A} {t1 t2: T}: shift t1 (shift t2 x) = shift (t2 * t1) x := by
-  ext
-  simp [shift, leftMul, mul_assoc]
-
-theorem shift_one {x: T → A} [MulOneClass T]: shift 1 x = x := by
-  ext
-  simp [shift, leftMul]
-
-theorem shift_eq {x: T → A} {t: T} [MulOneClass T]: (shift t x) 1 = x t := by
-  simp [shift, leftMul]
-
-theorem shift_preimage_cylinder_eq [Mul T] (t1 t2: T) (S: Set A):
-  Set.preimage (shift t1) (cylinder t2 S) = cylinder (t1 * t2) S := by
-  rfl
-
-theorem shift_continuous [Mul T] (t: T) [TopologicalSpace A] [DiscreteTopology A]:
-  Continuous[Pi.topologicalSpace, Pi.topologicalSpace] (fun x: T → A => shift t x) := by
-  rw [pi_generateFrom_cylinders]
-  apply continuous_generateFrom_iff.mpr
-  intro V
-  simp
-  intro x U hV
-  rw [hV, shift_preimage_cylinder_eq]
-  apply TopologicalSpace.isOpen_generateFrom_of_mem
-  simp
-
--- F is equivariant if it commutes with the shift
-def equivariant [Mul T] (F: (T → A) → T → B): Prop :=
-  ∀ u t, F (shift t u) = shift t (F u)
-
-theorem shift_one_equivariant [MulOneClass T] {F: (T → A) → T → B} {x: T → A} {t: T}
-  (hf: equivariant F): F x t = F (shift t x) 1 := by
-  calc
-    F x t = F x (t * 1) := by rw [mul_one]
-        _ = ((F x) ∘ (leftMul t)) 1 := by rfl
-        _ = (shift t (F x)) 1 := by rfl
-  rw [hf]
+-- definition of a "local defining map"
 
 def local_map [Mul T] {S: Set T} (F: (T → A) → T → B) (f: (S → A) → B): Prop :=
-  ∀ x t, F x t = f (Set.restrict S (shift t x))
+  ∀ x: T → A, ∀ t: T, F x t = f (Set.restrict S (shift t x))
 
--- if F has a local map then it is equivariant
+def local_map_from [Mul T] {S: Set T} (f: (S → A) → B): (T → A) → T → B :=
+  fun x: T → A => fun t: T => f (Set.restrict S (shift t x))
+
+-- definition of a "memory set"
+def memory_set [Mul T] (F: (T → A) → T → B) (S: Set T): Prop :=
+  ∃ f: (S → A) → B, local_map F f
+
+
+-- if F has a local map then it is shiftu (t • s • x) = u (s • t • x)-equivariant
 theorem local_map_equivariant [Semigroup T] {S: Set T} {F: (T → A) → T → B} {f: (S → A) → B}
-  (h: local_map F f): equivariant F := by
+  (h: local_map F f): shift_equivariant F := by
   intro u t
   ext t'
   rw [h (shift t u) t']
@@ -116,25 +86,23 @@ theorem local_map_equivariant [Semigroup T] {S: Set T} {F: (T → A) → T → B
   simp [shift, leftMul]
   rw [mul_assoc]
 
-def memory_set [Mul T] (F: (T → A) → T → B) (S: Set T): Prop :=
-  ∃ f: (S → A) → B, local_map F f
-
 -- if F is equivariant and T is a unital magma then the universe is a memory set
-def memory_set_univ [MulOneClass T] {F: (T → A) → T → B}
-  (hf: equivariant F): memory_set F Set.univ := by
+theorem memory_set_univ [MulOneClass T] {F: (T → A) → T → B}
+  (hf: shift_equivariant F): memory_set F Set.univ := by
   exists fun x => F (x ∘ (@Equiv.Set.univ T).invFun) 1
   intro _ _
   rw [shift_one_equivariant hf]
   congr
 
 -- if T is a unital magma then {1} is a memory set for the identity on T → X
-def memory_set_id [MulOneClass T]: memory_set (@id (T → A)) {1} := by
+theorem memory_set_id [MulOneClass T]: memory_set (@id (T → A)) {1} := by
   exists fun x => x ⟨1, rfl⟩
   intro
   simp [leftMul, shift]
 
--- memory sets are upward closed
-def memory_set_incl [Mul T] {F: (T → A) → T → B} {S1 S2: Set T} (h1: memory_set F S1) (h2: S1 ⊆ S2): memory_set F S2 := by
+-- if S is a memory set and S ⊆ S' then S' is a memory set
+-- i.e. memory sets are upward closed
+theorem memory_set_incl [Mul T] {F: (T → A) → T → B} {S1 S2: Set T} (h1: memory_set F S1) (h2: S1 ⊆ S2): memory_set F S2 := by
   obtain ⟨f1, hf1⟩ := h1
   exists fun x => f1 (fun ⟨t, ht⟩ => x ⟨t, h2 ht⟩)
 
@@ -158,22 +126,28 @@ theorem memory_set_eq [Mul T] {F: (T → A) → T → B} {S: Set T} (h1: memory_
   exists t'
 
 -- definition of sliding block code: there exists a finite memory set
--- todo: generalize to shift spaces besides the full shit spaces
 def sliding_block_code [Mul T] (F: (T → A) → T → B): Prop :=
   ∃ S: Set T, Finite S ∧ memory_set F S
 
-theorem equivariant_compose [Mul T] {F1: (T → A) → T → B} {F2: (T → B) → T → C} (h1: equivariant F1) (h2: equivariant F2): equivariant (F2 ∘ F1) := by
-  simp [equivariant]
-  intros
-  rw [h1, h2]
-
-theorem sliding_block_equivariant [Semigroup T] {F: (T → A) → T → B} (h: sliding_block_code F): equivariant F := by
+-- sliding block codes are shift-equivariant
+theorem sliding_block_code_equivariant [Semigroup T] {F: (T → A) → T → B} (h: sliding_block_code F): shift_equivariant F := by
   obtain ⟨_, _, hS2⟩ := h
   obtain ⟨_, hf⟩ := hS2
   exact local_map_equivariant hf
 
+-- the shift map is a sliding sliding block code
+-- TODO: weaken commutativity assumption?
+theorem shift_is_sliding_block_code [CommMonoid T] (t: T): sliding_block_code (fun x: T → A => shift t x) := by
+  exists {t}
+  constructor
+  · exact Set.finite_singleton t
+  · exists fun x => x ⟨t, Set.mem_singleton t⟩
+    intro x g
+    simp [shift, leftMul]
+    rw [mul_comm]
+
 -- f is a local map for F iff. F is equivariant and ∀ x, F(x)(1) = f (x|S)
-theorem local_map_iff [Monoid T] {F: (T → A) → T → B} {S: Set T} (hS: Finite S) (f: (S → A) → B): local_map F f ↔ equivariant F ∧ ∀ u, F u 1 = f (S.restrict u) := by
+theorem local_map_iff [Monoid T] {F: (T → A) → T → B} {S: Set T} (hS: Finite S) (f: (S → A) → B): local_map F f ↔ shift_equivariant F ∧ ∀ u, F u 1 = f (S.restrict u) := by
   constructor
   . intro h
     have h1: sliding_block_code F := by
@@ -183,21 +157,46 @@ theorem local_map_iff [Monoid T] {F: (T → A) → T → B} {S: Set T} (hS: Fini
       exact hS
       exists f
     constructor
-    exact sliding_block_equivariant h1
+    exact sliding_block_code_equivariant h1
     intro x
     simp [h x, shift_one]
   . intro ⟨h1, h2⟩ x g
     rw [←h2 (shift g x), h1]
     simp [shift, leftMul]
 
--- if F1 has memory set S1
--- and F2 has memory set S2
--- then F2 ∘ F1 has memory set S1 * S2
-theorem memory_set_compose [Mul T] {F1: (T → A) → T → B} {F2: (T → B) → T → C} {S1 S2: Set T} (h1: memory_set F1 S1) (h2: memory_set F2 S2): memory_set (F2 ∘ F1) (setMul S1 S2) := by
-    obtain ⟨f1, hf1⟩ := h1
-    obtain ⟨f2, hf2⟩ := h2
-    -- need a map from ((S1*S2) → A) → C
-    sorry
+-- If F1 has local map f1 on S1 and
+-- F2 has local map f2 on S2
+-- this theorem constructs the corresponding local map of F2 ∘ F1
+theorem local_map_compose [Semigroup T] {F1: (T → A) → T → B} {F2: (T → B) → T → C} {S1 S2: Set T}
+  {f1: (S1 → A) → B} {f2: (S2 → B) → C} (h1: local_map F1 f1) (h2: local_map F2 f2):
+  local_map (F2 ∘ F1) (fun x: setMul S2 S1 → A => f2 (fun s2 => f1 (fun s1 => x ⟨s2.val * s1.val, ⟨s2.val, s2.prop, by exists s1.val; simp⟩⟩))) := by
+  intro _ _
+  simp [Function.comp]
+  rw [h2]
+  congr
+  ext
+  simp_all
+  rw [←local_map_equivariant h1, h1]
+  congr
+
+-- If F1 has memory set S1 and F2 has memory set S2 then F2 ∘ F1 has memory set S2 * S1
+theorem memory_set_compose [Semigroup T] {F1: (T → A) → T → B} {F2: (T → B) → T → C} {S1 S2: Set T} (h1: memory_set F1 S1) (h2: memory_set F2 S2): memory_set (F2 ∘ F1) (setMul S2 S1) := by
+  obtain ⟨f1, hf1⟩ := h1
+  obtain ⟨f2, hf2⟩ := h2
+  exists fun x => f2 (fun s2 => f1 (fun s1 => x ⟨s2.val * s1.val, ⟨s2.val, s2.prop, by exists s1.val; simp⟩⟩))
+  exact local_map_compose hf1 hf2
+
+-- If F1 and F2 are sliding block codes then F1 ∘ F2 is a sliding block code
+theorem sliding_block_code_compose [Semigroup T] {F1: (T → A) → T → B} {F2: (T → B) → T → C}
+  (h1: sliding_block_code F1) (h2: sliding_block_code F2): sliding_block_code (F2 ∘ F1) := by
+  obtain ⟨S1, hS1⟩ := h1
+  obtain ⟨S2, hS2⟩ := h2
+  exists setMul S2 S1
+  constructor
+  . apply Set.Finite.image2
+    exact hS2.left
+    exact hS1.left
+  . exact memory_set_compose hS1.right hS2.right
 
 -- every sliding block code is continuous
 theorem sliding_block_code_continuous [MulOneClass T] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] {F: (T → A) → T → B} (h: sliding_block_code F): Continuous F := by
@@ -263,8 +262,8 @@ theorem exists_local_map {X Y Z: Type*} {F: (X → Y) → Z} {S: Set X} [Nonempt
   apply h
   rw [←Set.restrict_eq_restrict_iff, hG (S.restrict u)]
 
--- if A is nonempty and finite and F: (T → A) → T → B is continuous and equivariant then it is a sliding block
-theorem sliding_block_code_of_continuous_and_equivariant [Monoid T] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] {F: (T → A) → T → B} (h1: Continuous F) (h2: equivariant F): sliding_block_code F := by
+-- if A is nonempty and finite and F: (T → A) → T → B is continuous and equivariant then it is a sliding block code
+theorem sliding_block_code_of_continuous_and_equivariant [Monoid T] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] {F: (T → A) → T → B} (h1: Continuous F) (h2: shift_equivariant F): sliding_block_code F := by
   let Ω := fun u => Classical.choose (exists_neighbor_eqAt_one h1 u)
   let hΩ := fun u => Classical.choose_spec (exists_neighbor_eqAt_one h1 u)
   have: Set.univ ⊆ ⋃ u, eqOn_nhd u (Ω u) := by
@@ -312,8 +311,8 @@ theorem sliding_block_code_of_continuous_and_equivariant [Monoid T] [Finite A] [
 Curtis-Hedlund-Lyndon theorem:
 If A is finite then a map F: (G → A) → (G → A) is a sliding block code iff. it is both equivariant and continuous
 -/
-theorem curtis_hedlund_lyndon [Monoid T] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] (F: (T → A) → T → B): sliding_block_code F ↔ (Continuous F ∧ equivariant F) :=
-  ⟨fun h => ⟨sliding_block_code_continuous h, sliding_block_equivariant h⟩, fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2⟩
+theorem curtis_hedlund_lyndon [Monoid T] [Finite A] [Nonempty A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B] (F: (T → A) → T → B): sliding_block_code F ↔ (Continuous F ∧ shift_equivariant F) :=
+  ⟨fun h => ⟨sliding_block_code_continuous h, sliding_block_code_equivariant h⟩, fun ⟨h1, h2⟩ => sliding_block_code_of_continuous_and_equivariant h1 h2⟩
 
 theorem uniform_continuous_of_sliding_block_code {A B T: Type*} [Mul T] [UniformSpace A] [UniformSpace B] [DiscreteUniformity A] [DiscreteUniformity B] {F: (T → A) → T → B} (h: sliding_block_code F): UniformContinuous F := by
   apply prodiscrete_uniform_continuous_iff.mpr
@@ -329,7 +328,7 @@ theorem uniform_continuous_of_sliding_block_code {A B T: Type*} [Mul T] [Uniform
   simp_all [eqOn_entourage]
   exact memory_set_eq hS.right hxy
 
-theorem sliding_block_code_of_uniform_continuous_and_equivariant [MulOneClass T] [Nonempty A] [UniformSpace A] [DiscreteUniformity A] [UniformSpace B] [DiscreteUniformity B] {F: (T → A) → T → B} (h1: UniformContinuous F) (h2: equivariant F): sliding_block_code F := by
+theorem sliding_block_code_of_uniform_continuous_and_equivariant [MulOneClass T] [Nonempty A] [UniformSpace A] [DiscreteUniformity A] [UniformSpace B] [DiscreteUniformity B] {F: (T → A) → T → B} (h1: UniformContinuous F) (h2: shift_equivariant F): sliding_block_code F := by
   obtain ⟨S, hS⟩ := prodiscrete_uniform_continuous_iff.mp h1 {1} (Set.finite_singleton 1)
   exists S
   constructor
@@ -342,133 +341,141 @@ theorem sliding_block_code_of_uniform_continuous_and_equivariant [MulOneClass T]
   simp [shift_eq]
 
 -- drops the finite assumption
-theorem curtis_hedlund_lyndon_uniform {A B T: Type*} [Monoid T] [Nonempty A] [UniformSpace A] [DiscreteUniformity A] [UniformSpace B] [DiscreteUniformity B] (F: (T → A) → T → B): sliding_block_code F ↔ (UniformContinuous F ∧ equivariant F) := by
+theorem curtis_hedlund_lyndon_uniform {A B T: Type*} [Monoid T] [Nonempty A] [UniformSpace A] [DiscreteUniformity A] [UniformSpace B] [DiscreteUniformity B] (F: (T → A) → T → B): sliding_block_code F ↔ (UniformContinuous F ∧ shift_equivariant F) := by
   apply Iff.intro
-  exact fun h => ⟨uniform_continuous_of_sliding_block_code h, sliding_block_equivariant h⟩
+  exact fun h => ⟨uniform_continuous_of_sliding_block_code h, sliding_block_code_equivariant h⟩
   exact fun ⟨h1, h2⟩ => sliding_block_code_of_uniform_continuous_and_equivariant h1 h2
-
-class Subshift {M A: Type*} [Mul M] [TopologicalSpace A] (S: Set (M → A)): Prop where
-  closed: IsClosed S
-  shift_invariant: ∀ x ∈ S, ∀ g: M, shift g x ∈ S
-
-export Subshift (closed shift_invariant)
-
-theorem Subshift_empty {M A: Type*} [Mul M] [TopologicalSpace A]:
-  Subshift (∅: Set (M → A)) := by
-  constructor <;> simp
-
-theorem Subshift_univ {M A: Type*} [Mul M] [TopologicalSpace A]:
-  Subshift (Set.univ (α := M → A)) := by
-  constructor <;> simp
-
--- artbirary intersections of Subshifts are Subshifts
-theorem Subshift_sInter {M A: Type*} [Mul M] [TopologicalSpace A]
-  (Λs: Set (Set (M → A))) (h: ∀ Λ ∈ Λs, Subshift Λ): Subshift (Set.sInter Λs) := by
-  constructor
-  apply isClosed_sInter
-  intro Λ hΛ
-  exact (h Λ hΛ).1
-  intro x hx g Λ hΛ
-  exact (h Λ hΛ).2 x (hx Λ hΛ) g
-
-theorem Subshift_iInter {M A: Type*} [Mul M] [TopologicalSpace A]
-  {I: Type*} (Λ: I → (Set (M → A))) (h: ∀ i: I, Subshift (Λ i)): Subshift (Set.iInter Λ) := by
-  constructor
-  apply isClosed_iInter
-  intro i
-  exact (h i).1
-  intro x hx g Λ hΛ
-  simp at hx
-  obtain ⟨i, hi⟩ := hΛ
-  rw [←hi]
-  exact (h i).2 x (hx i) g
-
-theorem Subshift_iUnion {M A: Type*} [Mul M] [TopologicalSpace A] [DiscreteTopology A]
-  {I: Type*} [Finite I] (Λ: I → Set (M → A)) (h: ∀ i: I, Subshift (Λ i)): Subshift (Set.iUnion Λ) := by
-  constructor
-  apply isClosed_iUnion_of_finite
-  intro i
-  exact (h i).1
-  intro x hx g
-  let ⟨Λi, hΛi⟩ := hx
-  exists Λi
-  constructor
-  exact hΛi.1
-  simp at hx
-  obtain ⟨i, hi⟩ := hx
-  sorry
 
 -- the preimage of a subshift under a sliding block code is a subshift
 -- may hold when A is not necessarily finite
 theorem Subshift_preimage {M A B: Type*} [Monoid M] [Nonempty A] [Finite A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
-  (F: (M → A) → (M → B)) (h: sliding_block_code F) (Λ2: Set (M → B)) [Subshift Λ2]:
-    Subshift (Set.preimage F Λ2) := by
-  have ⟨hF1, hF2⟩ := (curtis_hedlund_lyndon F).mp h
+  (F: (M → A) → (M → B)) (h1: sliding_block_code F) (Λ: Set (M → B)) (h2: Subshift Λ):
+    Subshift (Set.preimage F Λ) := by
+  have ⟨hF1, hF2⟩ := (curtis_hedlund_lyndon F).mp h1
   constructor
-  apply IsClosed.preimage
-  exact hF1
-  exact closed
-  intro x hx g
-
-  simp [shift]
-  sorry
-  /-
-  rw [hF2]
-  exact shift_invariant (F x) hx g
-  -/
-
--- the image of a subshift under a sliding block is a subshift
-theorem Subshift_image {M A B: Type*} [Monoid M] [Nonempty A] [Finite A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
-  (F: (M → A) → (M → B)) (h: sliding_block_code F) (Λ1: Set (M → A)) [Subshift Λ1]:
-    Subshift (Set.image F Λ1) := by
-  have ⟨hF1, hF2⟩ := (curtis_hedlund_lyndon F).mp h
-  constructor
-  sorry
-  intro x hx g
-  obtain ⟨y, hy1, hy2⟩ := hx
+  apply IsClosed.preimage hF1 closed
+  intro _ hx _
   simp
-  exists shift g y
+  rw [hF2]
+  apply shift_invariant
+  exact hx
+
+-- the image of a subshift under a sliding block code is a subshift
+theorem Subshift_image {M A B: Type*} [Monoid M] [Nonempty A] [Finite A] [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
+  (F: (M → A) → (M → B)) (h1: sliding_block_code F) (Λ1: Set (M → A)) (h2: Subshift Λ1):
+    Subshift (Set.image F Λ1) := by
+  have ⟨hF1, hF2⟩ := (curtis_hedlund_lyndon F).mp h1
   constructor
-  exact shift_invariant y hy1 g
-  simp [shift]
-  sorry
-  -- rw [hF2, hy2]
+  sorry -- why is the image closed?
+  exact shift_invariant_equivariant_image h2.shift_invariant hF2
 
+-- if T is a monoid and f: A → B then F: A^T → B^T defined by F(x) = f ∘ x is a sliding block code
+theorem postcomp_local_map [MulOneClass T] (f: A → B):
+  local_map (fun x => f ∘ x) (fun x: ((@Set.singleton T 1) → A) => f (x ⟨1, rfl⟩)) := by
+  rw [local_map]
+  intro x t
+  simp
+  rw [shift_eq]
 
--- a "block" consists of a subset S ⊆ T and a function b: S → A
+theorem postcomp_memory_set [MulOneClass T] (f: A → B):
+  memory_set (fun x => f ∘ x) (@Set.singleton T 1) := by
+  rw [memory_set]
+  exists fun x: ((@Set.singleton T 1) → A) => f (x ⟨1, rfl⟩)
+  exact postcomp_local_map f
 
--- a configuration x: T → A contains a block b if there exists t ∈ T such that
--- S.restrict (shift t x) = f
-def contains_block [Mul T] (x: T → A) {S: Set T} (b: S → A): Prop :=
-  ∃ t: T, S.restrict (shift t x) = b
-
--- suppose T is a group
--- if x contains a block b then shift t x contains b
-def contains_block_shift [Group T] {x: T → A} {S: Set T} {b: S → A}
-  (h: contains_block x b) (t: T): contains_block (shift t x) b := by
-  obtain ⟨t', ht'⟩ := h
-  exists t⁻¹ * t'
-  simp [shift_comp]
-  exact ht'
-
-def shift_invariant_of_forbidden_words [Group T] [TopologicalSpace A] (Λ: Set (T → A)):
-  (∃ ι: Type, ∃ S: ι → Set T, ∃ b: (i: ι) → (S i → A), Λ = {x: T → A | ∀ i: ι, ¬ contains_block x (b i)})
-  → (∀ x ∈ Λ, ∀ t: T, shift t x ∈ Λ) := by
-  intro h
-  obtain ⟨ι, S, b, h1⟩ := h
-  intro x hx t
-  rw [h1]
-  intro i
-  simp [h1] at hx
-  specialize hx i
-  intro hx'
-  have := contains_block_shift hx' t⁻¹
-  simp [shift_comp, shift_one] at this
-  contradiction
-
-
-def subshift_iff [Mul T] [TopologicalSpace A] (Λ: Set (T → A)):
-  Subshift Λ ↔ ∃ ι: Type, ∃ S: ι → Set T, ∃ b: (i: ι) → (S i → A), Λ = {x: T → A | ∀ i: ι, ¬ contains_block x (b i)} := by
+theorem sliding_block_code_postcomp [MulOneClass T] (f: A → B):
+  sliding_block_code (fun x: T → A => f ∘ x) := by
+  exists {1}
   constructor
-  sorry
-  sorry
+  exact Set.finite_singleton 1
+  exact postcomp_memory_set f
+
+-- 1.45: if A is finite, f: A → B, and X is a subshift ot A^T then (f ∘ x)(X) is a subshift of B^T
+theorem sliding_block_code_postcomp_subshift {A B T: Type} [Monoid T] [Finite A]
+  [TopologicalSpace A] [DiscreteTopology A] [TopologicalSpace B] [DiscreteTopology B]
+  (X: Set (T → A)) (hX: Subshift X) (f: A → B):
+  Subshift (Set.image (fun x => f ∘ x) X) := {
+    closed := sorry
+    shift_invariant := by
+      intro x hx t
+      simp_all
+      obtain ⟨y, hy⟩ := hx
+      sorry
+  }
+
+-- 1.46
+def equivariant2 {A T Y: Type*} [Mul T]
+  [SMul T Y]
+  (f: (T → A) → Y): Prop :=
+  ∀ x: T → A, ∀ t: T,
+  f (shift t x) = t • (f x)
+
+def equivariant3 {X Y T: Type*} [Mul T]
+  [SMul T X] [SMul T Y]
+  (f: X → Y): Prop :=
+  ∀ (x: X) (t: T), f (t • x) = t • (f x)
+
+
+-- 1.46.a
+example {A B T Y: Type*} [Group T]
+  [TopologicalSpace A] [DiscreteTopology A]
+  [TopologicalSpace B] [DiscreteTopology B]
+  [TopologicalSpace Y]
+  [TopologicalSpace T]
+  [MulAction T Y] [ContinuousSMul T Y]
+  {Z: Set Y}
+  {f: (T → A) → Y}
+  (h1: Set.image2 (fun t z => t • z) (@Set.univ T) Z ⊆ Z)
+  (h2: equivariant2 f)
+  (h3: Continuous f):
+  Subshift (Set.preimage f Z) := sorry
+
+-- 1.46.b
+example {A B T Y: Type*} [Group T]
+  [TopologicalSpace A] [DiscreteTopology A]
+  [TopologicalSpace B] [DiscreteTopology B]
+  [TopologicalSpace Y]
+  [TopologicalSpace T]
+  [T2Space Y]
+  [MulAction T Y] [ContinuousSMul T Y]
+  {f g: (T → A) → Y}
+  (h1: equivariant2 f)
+  (h2: Continuous f)
+  (h3: equivariant2 g)
+  (h4: Continuous g):
+  Subshift {x: T → A | f x = g x} := sorry
+
+-- 1.46.c is equivalent to 1.39.f
+
+-- 1.46.d
+-- this should probably follow from 1.46.b
+theorem eqOn_subshift [Group T]
+  [TopologicalSpace A] [DiscreteTopology A]
+  [TopologicalSpace B] [DiscreteTopology B]
+  {f g: (T → A) → (T → B)}
+  (h1: shift_equivariant f)
+  (h2: Continuous f)
+  (h3: shift_equivariant g)
+  (h4: Continuous g):
+  Subshift {x: T → A | f x = g x} := sorry
+
+-- 1.46.e
+example [Group T]
+  [TopologicalSpace A] [DiscreteTopology A]
+  {f: (T → A) → (T → A)}
+  (h1: shift_equivariant f)
+  (h2: Continuous f):
+  Subshift {x: T → A | f x = x} :=
+  eqOn_subshift h1 h2 (shift_equivariant_id) (continuous_id)
+
+
+
+-- 1.47
+-- 1.48
+
+-- 1.74
+-- The language of a configuration A^Z
+
+-- definition of a surjunctive group
+def surjunctive (G: Type) [Group G]: Prop :=
+  ∀ A: Type, ∀ F: (G → A) → (G → A), Finite A ∧ sliding_block_code F ∧ Function.Injective F → Function.Surjective F
