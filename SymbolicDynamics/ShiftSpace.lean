@@ -1,8 +1,7 @@
 
 --import Mathlib.Topology.Defs.Basic
-import Mathlib.Topology.Constructions
+--import Mathlib.Topology.Constructions
 
-import SymbolicDynamics.Blocks
 import SymbolicDynamics.ProdiscreteTopology
 
 variable {A B C T : Type*}
@@ -15,7 +14,8 @@ def shift [Mul T] (t: T): (T → A) → (T → A) :=
 -- basic results about the shift map
 theorem shift_comp [Semigroup T] {x: T → A} {t1 t2: T}: shift t1 (shift t2 x) = shift (t2 * t1) x := by
   ext
-  simp [shift, leftMul, mul_assoc]
+  simp [shift, leftMul]
+  rw [mul_assoc]
 
 theorem shift_one {x: T → A} [MulOneClass T]: shift 1 x = x := by
   ext
@@ -74,24 +74,18 @@ theorem shift_invariant_univ [Mul T]: shift_invariant_subset (@Set.univ (T → A
 theorem shift_invariant_empty [Mul T]: shift_invariant_subset (@∅: Set (T → A)) := by
   intro; simp
 
--- artbirary intersection of shift invariant sets is shift invariant
-theorem shift_invariant_inter [Mul T] {ι : Sort u} {S : ι → Set (T → A)}
-  (h : ∀ i, shift_invariant_subset (S i)) :
-  shift_invariant_subset (⋂ i, S i) := by
+theorem shift_invariant_sUnion [Mul T] {Λs : Set (Set (T → A))} (h : ∀ Λ ∈ Λs, shift_invariant_subset Λ) : shift_invariant_subset (Set.sUnion Λs) := by
   intro x hx t
-  simp_all
-  intro i
-  exact h i x (hx i) t
-
--- artbirary union of shift invariant sets is shift invariant
-theorem shift_invariant_union [Mul T] {ι : Sort u} {S : ι → Set (T → A)}
-  (h : ∀ i, shift_invariant_subset (S i)) :
-  shift_invariant_subset (⋃ i, S i) := by
-  intro x hx t
-  simp_all
   obtain ⟨i, hi⟩ := hx
   exists i
-  exact h i x hi t
+  constructor
+  exact hi.left
+  exact (h i hi.left) x hi.right t
+
+theorem shift_invariant_sInter [Mul T] {Λs : Set (Set (T → A))} (h: ∀ Λ ∈ Λs, shift_invariant_subset Λ): shift_invariant_subset (Set.sInter Λs) :=
+  fun x hx t Λ hΛ => h Λ hΛ x (by simp_all) t
+
+
 
 -- the image of a shift-invariant subset under a shift-equivariant map is shift-invariant
 theorem shift_invariant_equivariant_image [Mul T] {S: Set (T → A)} (hS: shift_invariant_subset S)
@@ -105,81 +99,95 @@ theorem shift_invariant_equivariant_image [Mul T] {S: Set (T → A)} (hS: shift_
   rw [← hx.right]
   apply hF
 
-class Subshift [Mul T] [TopologicalSpace A] (S: Set (T → A)): Prop where
+class ShiftSpace [Mul T] [TopologicalSpace A] (S: Set (T → A)): Prop where
   closed: IsClosed S
   shift_invariant: ∀ x ∈ S, ∀ g: T, shift g x ∈ S
 
-export Subshift (closed shift_invariant)
+export ShiftSpace (closed shift_invariant)
 
-theorem Subshift_empty [Mul T] [TopologicalSpace A]:Subshift (∅: Set (T → A)) := {
+theorem ShiftSpace_empty [Mul T] [TopologicalSpace A]: ShiftSpace (∅: Set (T → A)) := {
   closed := by simp
   shift_invariant := by simp
 }
 
-theorem Subshift_univ [Mul T] [TopologicalSpace A]: Subshift (@Set.univ (T → A)) := {
+theorem ShiftSpace_univ [Mul T] [TopologicalSpace A]: ShiftSpace (@Set.univ (T → A)) := {
   closed := by simp
   shift_invariant := by simp
 }
 
--- artbirary intersections of Subshifts are Subshifts
-theorem Subshift_sInter [Mul T] [TopologicalSpace A]
-  {Λs: Set (Set (T → A))} (h: ∀ Λ ∈ Λs, Subshift Λ): Subshift (Set.sInter Λs) := {
+-- artbirary intersections of shift spaces are shift spaces
+theorem ShiftSpace_sInter [Mul T] [TopologicalSpace A]
+  {Λs: Set (Set (T → A))} (h: ∀ Λ ∈ Λs, ShiftSpace Λ): ShiftSpace (Set.sInter Λs) := {
   closed := by
     apply isClosed_sInter
     exact fun Λ hΛ => (h Λ hΛ).1
   shift_invariant := fun x hx g Λ hΛ =>(h Λ hΛ).2 x (hx Λ hΛ) g
   }
 
+-- finite union of shift spaces is a shift space
+theorem ShiftSpace_sUnion [Mul T] [TopologicalSpace A]
+  {Λs: Set (Set (T → A))} [Finite Λs] (h: ∀ Λ ∈ Λs, ShiftSpace Λ): ShiftSpace (Set.sUnion Λs) := {
+  closed := by
+    apply isOpen_compl_iff.mp
+    rw [Set.compl_sUnion]
+    apply Set.Finite.isOpen_sInter
+    apply Set.Finite.image
+    assumption
+    intro _ hU
+    obtain ⟨V, hV⟩ := hU
+    simp [←hV.right]
+    exact (h V hV.left).closed
+  shift_invariant := by
+    intro x hx t
+    obtain ⟨i, hxi⟩ := hx
+    exists i
+    constructor
+    exact hxi.left
+    exact (h i hxi.left).shift_invariant x hxi.right t
+  }
+
 -- intersection of two subshifts is a subshift
-theorem Subshift_inter {M A: Type*} [Mul M] [TopologicalSpace A]
-  (Λ1 Λ2: Set (M → A)) (h1: Subshift Λ1) (h2: Subshift Λ2): Subshift (Λ1 ∩ Λ2) := by
+theorem ShiftSpace_inter {M A: Type*} [Mul M] [TopologicalSpace A] (Λ1 Λ2: Set (M → A)) (h1: ShiftSpace Λ1) (h2: ShiftSpace Λ2): ShiftSpace (Λ1 ∩ Λ2) := by
   let Λs: Set (Set (M → A)) := {Λ1, Λ2}
   have: Λ1 ∩ Λ2 = Set.sInter {Λ1, Λ2} := by simp
   rw [this]
-  have: ∀ Λ ∈ Λs, Subshift Λ := by
+  have: ∀ Λ ∈ Λs, ShiftSpace Λ := by
     intro _ hΛ
     simp_all
     cases hΛ with
     | inl => simp_all
     | inr => simp_all
-  exact Subshift_sInter this
+  exact ShiftSpace_sInter this
 
 /- Arbitrary indexed intersection of subshifts is subshift -/
-theorem Subshift_iInter {M A: Type*} [Mul M] [TopologicalSpace A]
-  {I: Type*} (Λ: I → (Set (M → A))) (h: ∀ i: I, Subshift (Λ i)): Subshift (Set.iInter Λ) := by
-  apply Subshift_sInter
+theorem ShiftSpace_iInter {M A: Type*} [Mul M] [TopologicalSpace A]
+  {I: Type*} (Λ: I → (Set (M → A))) (h: ∀ i: I, ShiftSpace (Λ i)): ShiftSpace (Set.iInter Λ) := by
+  apply ShiftSpace_sInter
   intro _ hΛi
   simp at hΛi
   obtain ⟨i, hi⟩ := hΛi
   rw [←hi]
   exact h i
 
-theorem Subshift_iUnion {M A: Type*} [Mul M] [TopologicalSpace A] [DiscreteTopology A]
-  {I: Type*} [Finite I] (Λ: I → Set (M → A)) (h: ∀ i: I, Subshift (Λ i)): Subshift (Set.iUnion Λ) := by
-  constructor
-  apply isClosed_iUnion_of_finite
-  intro i
-  exact (h i).1
-  intro x hx g
-  simp_all
-  obtain ⟨i, hxi⟩ := hx
-  exists i
-  exact (h i).shift_invariant x hxi g
+theorem ShiftSpace_iUnion {M A: Type*} [Mul M] [TopologicalSpace A] [DiscreteTopology A]
+  {I: Type*} [Finite I] (Λ: I → Set (M → A)) (h: ∀ i: I, ShiftSpace (Λ i)): ShiftSpace (Set.iUnion Λ) := by
+  apply ShiftSpace_sUnion
+  intro Λ hΛ
+  obtain ⟨i, hi⟩ := hΛ
+  rw [←hi]
+  exact h i
 
 -- 1.57
-theorem Subshift_constant [Mul T] [TopologicalSpace A] [DiscreteTopology A]:
-  Subshift {x: T → A | ∃ a: A, ∀ t: T, x t = a} := {
+theorem ShiftSpace_constant [Mul T] [TopologicalSpace A] [DiscreteTopology A]:
+  ShiftSpace {x: T → A | ∃ a: A, ∀ t: T, x t = a} := {
   closed := by
     -- why is the set of constant functions closed in the prodiscrete topology?
     sorry
   shift_invariant := by
     intro x hx t
-    --simp at hx
     obtain ⟨a, ha⟩ := hx
-    --simp
     exists a
     intro t'
-    simp [shift]
     exact ha (leftMul t t')
 }
 
@@ -192,7 +200,7 @@ def orbit_closure [Mul T] [TopologicalSpace A] (S: Set (T → A)): Set (T → A)
 
 -- the orbit closure is a subshift
 theorem orbit_closure_subshift {T: Type u1} {A: Type u2} [Mul T] [TopologicalSpace A]
-  (S Λ: Set (T → A)): Subshift (orbit_closure S) := {
+  (S Λ: Set (T → A)): ShiftSpace (orbit_closure S) := {
   closed := by simp [orbit_closure]
   shift_invariant := by
     intro x hx g U hU
@@ -203,7 +211,7 @@ theorem orbit_closure_subshift {T: Type u1} {A: Type u2} [Mul T] [TopologicalSpa
 
 -- the orbit closure is the smallest subshift containing the generating set
 def orbit_closure_least_subshift {T: Type u1} {A: Type u2} [Mul T] [TopologicalSpace A]
-  {S Λ: Set (T → A)} (h1: Subshift Λ) (h2: S ⊆ Λ): (orbit_closure S) ⊆ Λ := by
+  {S Λ: Set (T → A)} (h1: ShiftSpace Λ) (h2: S ⊆ Λ): (orbit_closure S) ⊆ Λ := by
   rw [← IsClosed.closure_eq h1.closed]
   apply closure_mono
   intro _ hx
@@ -212,110 +220,3 @@ def orbit_closure_least_subshift {T: Type u1} {A: Type u2} [Mul T] [TopologicalS
   rw [←hy.right]
   apply shift_invariant
   exact h2 hy.left
-
--- Subshifts of finite types
-
-
-def appears_anywhere [Mul X] (u: X → Y) (b: Block X Y): Prop :=
-  ∃ x: X, appears (shift x u) b
-
-def shift_from_forbidden_block [Mul X] (b: Block X Y): Set (X → Y) :=
-  {u | ¬ appears_anywhere u b}
-
-def shift_from_forbidden_blocks [Mul X] (F: Set (Block X Y)): Set (X → Y) :=
-  {u | ∀ b ∈ F, ¬ appears_anywhere u b}
-
-example [Mul X] (F: Set (Block X Y)):
-  shift_from_forbidden_blocks F = Set.sInter (Set.image (fun b => shift_from_forbidden_block b) F) := by
-  simp [shift_from_forbidden_block, shift_from_forbidden_blocks]
-  ext
-  simp_all
-
--- 1.47.a
-theorem shift_from_forbidden_blocks_is_shift [Monoid X] [TopologicalSpace Y] (F: Set (Block X Y)):
-  Subshift (shift_from_forbidden_blocks F) := {
-  closed := by
-    sorry
-  shift_invariant := by
-    intro u hu x b hb
-    specialize hu b hb
-    simp_all [appears_anywhere]
-    intro x'
-    simp_all [appears, shift, leftMul, Function.comp, leftMul]
-    specialize hu (x * x')
-    intro h
-    apply hu
-    rw [←h]
-    simp [Set.EqOn]
-    intro _ _
-    rw [mul_assoc]
-  }
-
--- definition of F(X)
-def patterns_not_found_in
-  (U: Set (X → Y)): Set (Block X Y) :=
-  Set.compl (blocks_in_configs U)
-
--- 1.47.b
-theorem defining_set_eq [Mul X] [TopologicalSpace Y] (U: Set (X → Y)) (h: Subshift U):
-  U = shift_from_forbidden_blocks (patterns_not_found_in U) := by
-  sorry
-
-theorem defining_set_contained [Mul X] [TopologicalSpace Y]
-  (U: Set (X → Y)) (h: Subshift U) (F: Set (Block X Y)) (hF: U = shift_from_forbidden_blocks F):
-  F ⊆ patterns_not_found_in U := by
-  sorry
-
-
--- TODO: 1.47.c
-
--- Let U ⊆ (X → Y)
--- Then U is said to have "finite type" if it is generated by a finite set of forbidden blocks
-def Subshift_of_finite_type [Mul X] [TopologicalSpace Y] (U: Set (X → Y)): Prop :=
-  ∃ F: Set (Block X Y), Finite F ∧ U = shift_from_forbidden_blocks F
-
--- TODO: 1.48.a
-
--- 1.48.b
-
--- 1.48.e
-theorem subshift_of_finite_type_univ [Mul X] [TopologicalSpace Y]:
-  Subshift_of_finite_type (@Set.univ (X → Y)) := by
-  exists ∅
-  constructor
-  exact Set.finite_empty
-  simp [shift_from_forbidden_blocks]
-
--- intersection of subshfits of finite type is a subshift with finite type
-theorem subshift_of_finite_type_inter [Mul X] [TopologicalSpace Y]
-  {Λ1 Λ2: Set (X → Y)} (h1: Subshift_of_finite_type Λ1) (h2: Subshift_of_finite_type Λ2):
-  Subshift_of_finite_type (Λ1 ∩ Λ2) := by
-  obtain ⟨F1, hF1⟩ := h1
-  obtain ⟨F2, hF2⟩ := h2
-  exists F1 ∪ F2
-  constructor
-  exact @Finite.Set.finite_union _ F1 F2 hF1.left hF2.left
-  rw [hF1.right, hF2.right]
-  ext u
-  constructor
-  intro ⟨hu1, hu2⟩
-  intro b
-  intro h
-  cases h
-  case inl h_left =>
-    exact hu1 b h_left
-  case inr h_right =>
-    exact hu2 b h_right
-  intro h
-  constructor
-  · intro b hb
-    exact h b (Or.inl hb)
-  · intro b hb
-    exact h b (Or.inr hb)
-
--- Given y: Y, consider the constant map u: _ => y.
--- Show the subshift X = {u} is a subshift of finite type.
-theorem subshift_of_finite_type_singleton [Mul X] [TopologicalSpace Y]
-  {y: Y}: Subshift_of_finite_type {fun _: X=> y} := by
-  -- We'll use a block that covers all of X and maps to y
-  sorry

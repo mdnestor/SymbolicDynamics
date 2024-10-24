@@ -14,17 +14,9 @@ TODO:
 
 -/
 
-import Mathlib.Topology.Bases
-import Mathlib.Topology.Defs.Basic
-import Mathlib.Topology.Constructions
 import Mathlib.Topology.Compactness.Compact
-import Mathlib.Topology.UniformSpace.Basic
 import Mathlib.Topology.UniformSpace.Pi
 import Mathlib.Topology.Separation
-import Mathlib.Topology.Connected.TotallyDisconnected
-import Mathlib.Topology.Metrizable.Basic
-import Mathlib.Topology.Perfect
--- import Mathlib.Topology.Metrizable.Urysohn -- this introduces a lot of imports
 
 -- the prodiscrete topology is the product of discrete spaces via the Π construction
 /-
@@ -281,7 +273,7 @@ theorem eqOn_nhd_cylinder_eq {G A: Type*} (x: G → A) (Ω: Set G):
     simp_all [proj]
 
 theorem eqOn_nhd_open {G A: Type*} [TopologicalSpace A] [DiscreteTopology A]
-  (x: G → A) (Ω: Set G) (h: Finite Ω): IsOpen (eqOn_nhd x Ω) := by
+  (x: G → A) {Ω: Set G} (h: Finite Ω): IsOpen (eqOn_nhd x Ω) := by
   rw [eqOn_nhd_cylinder_eq]
   apply Set.Finite.isOpen_sInter
   apply Set.Finite.image
@@ -294,9 +286,9 @@ theorem eqOn_nhd_open {G A: Type*} [TopologicalSpace A] [DiscreteTopology A]
   simp
 
 theorem eqOn_nhd_is_nhd {G A: Type*} [TopologicalSpace A] [DiscreteTopology A]
-  (x: G → A) (Ω: Set G) (h: Finite Ω):
+  (x: G → A) {Ω: Set G} (h: Finite Ω):
   eqOn_nhd x Ω ∈ nhds x := by
-  exact IsOpen.mem_nhds (eqOn_nhd_open x Ω h) (eqOn_nhd_self x Ω)
+  exact IsOpen.mem_nhds (eqOn_nhd_open x h) (eqOn_nhd_self x Ω)
 
 -- TODO: replace with mathlib definition
 def neighborhood_base {X: Type*} [TopologicalSpace X] (x: X) (B: Set (Set X)): Prop :=
@@ -406,7 +398,7 @@ theorem eqOn_nhd_forms_neighborhood_base {G A: Type*} [TopologicalSpace A] [Disc
     simp_all
     obtain ⟨Ω, hΩ1, hΩ2⟩ := hU
     rw [hΩ2]
-    exact eqOn_nhd_is_nhd x Ω hΩ1
+    exact eqOn_nhd_is_nhd x hΩ1
   . intro V hV
     have h1 := TopologicalSpace.isTopologicalBasis_of_subbasis (pi_generateFrom_cylinders A G)
     obtain ⟨B, hB1, hB2, hB3⟩ := (TopologicalSpace.IsTopologicalBasis.mem_nhds_iff h1).mp hV

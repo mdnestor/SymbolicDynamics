@@ -18,12 +18,14 @@ def empty_func: (@∅: Set X) → Y :=
 -- the empty block between two types
 def Block_empty (X Y: Type*): Block X Y := ⟨∅, empty_func⟩
 
+-- given a map u: X → Y and a subset Ω ⊆ X, this is the induced block (Ω, u|Ω)
 def Block_induced (u: X → Y) (Ω: Set X): Block X Y :=
   ⟨Ω, Ω.restrict u⟩
 
 -- given a function u: X → Y, the corresponding universal block
 def Block_univ (u: X → Y): Block X Y := Block_induced u Set.univ
 
+-- (Ω, u|Ω) = (Ω, v|Ω) iff u|Ω = v|Ω
 def Block_induced_eqon_iff (u v: X → Y) (Ω: Set X):
   Block_induced u Ω = Block_induced v Ω ↔ Set.EqOn u v Ω := by
   simp [Block_induced]
@@ -45,7 +47,7 @@ def appears_iff {X Y: Type*} (u: X → Y) (b: Block X Y): appears u b ↔ Block_
   intro h
   rw [←h]
 
--- if S1 ⊆ S2 and f: ↑S2 → Y this is the restriction ↑S1 → Y
+-- if S1 ⊆ S2 and f: S2 → Y this is the restriction S1 → Y
 def restrict_further {X Y: Type*} {S1 S2: Set X} (h: S1 ⊆ S2) (f: S2 → Y): S1 → Y :=
   fun ⟨x, hx⟩ => f ⟨x, h hx⟩
 
@@ -54,6 +56,13 @@ def restrict_further {X Y: Type*} {S1 S2: Set X} (h: S1 ⊆ S2) (f: S2 → Y): S
 class Block_le {X Y: Type*} (b1 b2: Block X Y): Prop where
   sub: b1.fst ⊆ b2.fst
   res: restrict_further sub b2.snd = b1.snd
+
+-- For every u: X → Y and Ω ⊆ X we have (Ω, u|Ω) ≤ (X, u|X)
+theorem Block_induced_le (u: X → Y) (Ω: Set X):
+  Block_le (Block_induced u Ω) (Block_univ u) := {
+    sub := by simp [Block_univ, Block_induced]
+    res := rfl
+  }
 
 theorem Block_le_refl {X Y: Type*} (b: Block X Y): Block_le b b := {
   sub := by rfl
@@ -90,9 +99,6 @@ theorem empty_block_bot {X Y: Type*}: IsBot (Block_empty X Y) := by
   sorry
   simp [Block_empty]
 
--- Given f: X → Y and Ω ⊆ X, return the block (Ω, f|Ω)
-example (u: X → Y) (Ω: Set X): Block X Y := ⟨Ω, Ω.restrict u⟩
-
 -- Relation between eqOn_nhd and blocks: V(u, Ω) = {v | the block (Ω, uΩ) appears in v}
 /-
 theorem block_eqOn_nhd_eq (u: X → Y) (Ω: Set X): eqOn_nhd u Ω = {v: X → Y | appears v ⟨Ω, Ω.restrict u⟩} := by
@@ -124,3 +130,43 @@ def blocks_in_configs (U: Set (X → Y)): Set (Block X Y) :=
 
 /- The set of configs containing a block -/
 def configs_containing (b: Block X Y): Set (X → Y) := {u | appears u b}
+
+def Subblock {X Y: Type*} (b: Block X Y) (Ω: Set X) (h: Ω ⊆ b.1): Block X Y :=
+  ⟨Ω, fun ⟨x, hx⟩ => b.snd ⟨x, h hx⟩⟩
+
+theorem Subblock_le {X Y: Type*} (b: Block X Y) (Ω: Set X) (h: Ω ⊆ b.1):
+  Block_le (Subblock b Ω h) b :=
+  ⟨h, rfl⟩
+
+-- two blocks agree if they agree on their shared domain
+def Block_agree {X Y: Type*} (b1 b2: Block X Y): Prop :=
+  Subblock b1 (b1.fst ∩ b2.fst) Set.inter_subset_left = Subblock b2 (b1.fst ∩ b2.fst) Set.inter_subset_right
+
+-- if b1 ≤ b2 then b1 and b2 agree
+theorem Block_le_implies_agree (b1 b2: Block X Y)
+  (h: Block_le b1 b2): Block_agree b1 b2 := sorry
+
+theorem Block_univ_agree_iff {X Y: Type*} (u v: X → Y):
+  Block_agree (Block_univ u) (Block_univ v) ↔ u = v := by
+  simp [Block_agree, Subblock, Block_univ, Block_induced]
+  constructor
+  intro h
+  ext x
+  rw [Set.univ_inter] at h
+  let h1 := (Sigma.mk.inj_iff.mp h)
+  let h2 := h1.2
+  simp at h2
+  sorry
+  intro h
+  rw [h]
+
+-- Can we show blocks form a presheaf?
+
+def Section {X: Type*} (Ω: Set X) (Y: Type*): Set (Block X Y) :=
+  Set.image (fun u: X → Y => ⟨Ω, Ω.restrict u⟩) Set.univ
+
+def GlobalSection (X Y: Type*): Set (Block X Y) :=
+  Section Set.univ Y
+
+def Restriction {V U: Set X} (h: U ⊆ V):
+  Section V Y → Section U Y := sorry

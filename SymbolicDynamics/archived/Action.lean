@@ -4,7 +4,7 @@ import Mathlib.Data.Set.Function
 import Mathlib.Algebra.Group.Action.Defs
 import Mathlib.Topology.Constructions
 
-import SymbolicDynamics.Defs
+-- import SymbolicDynamics.Defs
 
 variable {T X Y : Type*}
 
